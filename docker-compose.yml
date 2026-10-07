@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME_DEVELOPMENT}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:${DB_PORT}"
+
+  app:
+    build: .
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_NAME_DEVELOPMENT: ${DB_NAME_DEVELOPMENT}
+      DB_NAME_TEST: ${DB_NAME_TEST}
+      DB_PORT: ${DB_PORT}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      RAILS_ENV: ${RAILS_ENV}
+    volumes:
+      - .:/rails-api-docker
+      - log-data:/rails-api-docker/log
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+volumes:
+  log-data:
+  postgres-data:
+  

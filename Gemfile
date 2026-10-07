@@ -17,7 +17,7 @@ gem "stimulus-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 # json 3.0 removed the quirks_mode option that ActiveSupport 8.0 still passes to JSON.generate.
-gem "json", "< 3"
+gem "json", "< 4"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"

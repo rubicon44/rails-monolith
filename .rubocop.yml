@@ -6,3 +6,12 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 # # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
 # Layout/SpaceInsideArrayLiteralBrackets:
 #   Enabled: false
+
+# https://api.rubyonrails.org/v8.0.5/classes/ActiveRecord/Normalization/ClassMethods.html
+# ラムダの引数はかっこで囲まない（Rails API ドキュメントの書き方に合わせる）
+Style/StabbyLambdaParentheses:
+  EnforcedStyle: require_no_parentheses
+
+# ラムダの -> と引数の間に空白を入れる（例：-> email { ... }）
+Layout/SpaceInLambdaLiteral:
+  EnforcedStyle: require_space

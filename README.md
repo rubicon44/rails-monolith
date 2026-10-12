@@ -66,3 +66,10 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - `id` は、Railsのフォームヘルパーが作るもの（例：`email_address`、`password`）のままにする。参照先にある `id="email"` や `id="current-password"` には合わせない
   - 理由：参照先でも `id` は補助的な扱いで、`autocomplete` を指定していれば認識されるため。
 - 参照：https://web.dev/articles/sign-in-form-best-practices
+
+### Rakeタスク
+- Railsの機能（モデルやDB）を使うスクリプトは、カスタムRakeタスクとして `lib/tasks/*.rake` に書く（例：管理者の作成 `admin:create`）
+- モデルやDBを使うタスクは、`environment` タスクに依存させる（Railsアプリを読み込むため）
+  - 参照：https://guides.rubyonrails.org/command_line.html#custom-rake-tasks
+- 引数を受け取るタスクは、Rakeのドキュメントの書き方に合わせる（例：`task :create, [ :name, :email_address ] => [ :environment ] do |_, args|`）
+  - 参照：https://ruby.github.io/rake/doc/rakefile_rdoc.html#tasks-that-expect-parameters-and-have-prerequisites

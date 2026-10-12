@@ -1,0 +1,8 @@
+<%# locals: () -%>
+<%= render layout: "admin/shared/frame" do %>
+  <h1>管理画面トップ</h1>
+
+  <p>ログイン中：<%= current_administrator.name %></p>
+
+  <%= button_to "ログアウト", admin_logout_path, method: :delete %>
+<% end %>

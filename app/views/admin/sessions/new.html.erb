@@ -1,0 +1,22 @@
+<%# locals: (email_address:) -%>
+<%= render layout: "admin/shared/frame" do %>
+  <h1>ログイン</h1>
+
+  <% if flash[:alert] %>
+    <p role="alert"><%= flash[:alert] %></p>
+  <% end %>
+
+  <%= form_with url: admin_login_path do |form| %>
+    <div>
+      <%= form.label :email_address, "メールアドレス" %>
+      <%= form.email_field :email_address, value: email_address, required: true, autofocus: true, autocomplete: "username" %>
+    </div>
+
+    <div>
+      <%= form.label :password, "パスワード" %>
+      <%= form.password_field :password, required: true, autocomplete: "current-password" %>
+    </div>
+
+    <%= form.submit "ログインする" %>
+  <% end %>
+<% end %>

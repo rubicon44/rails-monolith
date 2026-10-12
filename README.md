@@ -78,3 +78,15 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - 参照：https://guides.rubyonrails.org/command_line.html#custom-rake-tasks
 - 引数を受け取るタスクは、Rakeのドキュメントの書き方に合わせる（例：`task :create, [ :name, :email_address ] => [ :environment ] do |_, args|`）
   - 参照：https://ruby.github.io/rake/doc/rakefile_rdoc.html#tasks-that-expect-parameters-and-have-prerequisites
+
+## 進め方のログ
+### これまで（2026/10/12）
+1. 全体の大枠を決めた：管理者ドメイン／会員ドメイン／イベントドメイン（コアドメイン）
+2. 独立した機能から作った：管理者ログイン（汎用サブドメインのため、モデリングは属性と制約だけの浅いもので進めた）
+3. 作りながら命名や設計方針を決め、READMEに残した
+
+### これから（2026/10/12 時点）
+1. イベントドメイン（コアドメイン）をしっかりモデリングする：状態遷移、集約の範囲、ルール、ユビキタス言語
+2. コアが周りのドメインに求めること（例：会員の性別は必須）を確認する
+3. モデリングをもとに、イベント作成から順に実装する
+4. 実装やフィードバックで分かったことを、モデルに戻して育てる

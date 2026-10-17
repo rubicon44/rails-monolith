@@ -74,6 +74,17 @@ https://github.com/user-attachments/assets/ed618838-3649-42b1-8d44-d1f0bf58fd41
 - Modelには、ドメインロジック（制約・ルール）を書く（バリデーション、業務上の判断や計算、状態遷移）
   - 意味的に分けられる処理（例：料金の計算、状態遷移）は積極的にPOROに切り出し、保守性を継続的に高める
 
+### パラメーターの受け取り
+- フォームの送信など、必ず送られてくるパラメーターは `params.expect` で受け取る（`require(...).permit(...)` は使わない）
+  - 例：`params.expect(event: [ :title, :description ])`
+  - 理由：想定外の形のリクエスト（例：ハッシュのはずの `event` に文字列が送られてくる）を、500エラーではなく400エラーにするため
+  - 参照：https://api.rubyonrails.org/classes/ActionController/Parameters.html#method-i-expect
+  - 参照：https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters
+- 検索条件など、送られてこないこともあるパラメーターは、`params.fetch(:キー, {}).permit(...)` で受け取る
+  - 例：`params.fetch(:q, {}).permit(:keyword, :status)`
+  - 理由：`expect` はキーがないと400エラーになるため。キーがないときは `fetch` で空のハッシュを初期値にする
+  - 参照：https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters
+
 ### インスタンス変数
 Controllerでインスタンス変数を使ってよいのは、インスタンス変数を使ったメモ化（memoization）の場合だけ。Viewへの受け渡し、`before_action` からの値の受け渡し、アクションの中での一時的な値には使わない。
 

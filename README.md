@@ -120,6 +120,43 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - View（erb）で共通化したい枠は、`admin/shared/_frame.html.erb` のような共通テンプレートとして作り、各Viewの中でパーシャルレイアウト（partial layouts）を使って `<%= render layout: "admin/shared/frame" do %> … <% end %>` のように呼び出す
   - 参照：https://guides.rubyonrails.org/layouts_and_rendering.html#partial-layouts
 
+### フォーム（form_with）
+レコードを作る・更新するフォームは `form_with model:`、それ以外のフォームは `form_with url:` を使う。
+
+| | `form_with model:` | `form_with url:` |
+| --- | --- | --- |
+| 使う場面 | レコードを作る・更新する（例：イベントの作成・編集） | レコードを作らない・更新しない（例：ログイン、検索） |
+| 渡すもの | 作成：`Event.new`（新しいオブジェクト）<br>編集：`Event.find(params[:id])`（保存済みのオブジェクト） | 送信先のURL（例：`admin_login_path`） |
+| 送信先 | 渡したオブジェクトから自動で決まる（新しいなら `POST /admin/events`、保存済みなら `PATCH /admin/events/1`） | 渡したURL |
+| 入力欄の名前 | モデル名でまとめられる（`event[title]`） | そのまま（`email_address`） |
+| 入力欄の初期値 | オブジェクトの値が自動で入る | 自分で `value:` を指定する |
+| Controllerでの受け取り方 | `params.expect(event: [ :title, … ])` | `params[:email_address]` |
+
+- 参照（`form_with` の `model:` と `url:` を含む、すべてのオプション）：https://api.rubyonrails.org/classes/ActionView/Helpers/FormHelper.html#method-i-form_with
+
+#### 共通：入力欄の名前と `params` の関係
+- 入力欄を作るヘルパー（`form.text_field`、`form.search_field` など）の最初の引数が、入力欄の名前（`name`）になる
+- フォームを送信すると、その名前が `params` のキーになり、Controllerで値を受け取れる
+- `form.label` の最初の引数は、どの入力欄のラベルかを示すだけ（`for` 属性）で、値は送信されない
+- 参照（入力欄の名前と `params` の形の関係）：https://guides.rubyonrails.org/form_helpers.html#form-input-naming-conventions-and-params-hash
+
+#### `form_with url:` の受け取り方
+- 入力欄の名前が、そのまま `params` のキーになる
+  - 例：`form.email_field :email_address` → `<input name="email_address">` → Controllerで `params[:email_address]`
+- 参照（`form_with url:` を使った検索フォームの例）：https://guides.rubyonrails.org/form_helpers.html#a-generic-search-form
+- 参照（入力欄の名前が `params` のキーになり、`params[:query]` で受け取れる）：https://guides.rubyonrails.org/form_helpers.html#helpers-for-generating-form-elements
+
+#### `form_with model:` の受け取り方
+- 入力欄の名前が、モデル名でまとめられる。Controllerでは、モデル名のキーの中に、すべての値がハッシュで入る
+  - 例：`form.text_field :title` → `<input name="event[title]">` → Controllerで `params[:event][:title]`（まとめて `params.expect(event: [ :title, … ])` で受け取る）
+- `new` の `Event.new` と `create` の `Event.new` は別物。`new` のものは空のフォームを表示するためだけに使い、`create` には引き継がれない（`create` に届くのはフォームの値だけ）
+- 保存に失敗したら、入力された値とエラーを持ったオブジェクトをそのまま渡して、同じ画面を再表示する
+- ルーティングは `resources` で書く（送信先を自動で決める仕組みは、`resources` で宣言されていることが前提のため）
+- 参照（`form_with model:` にオブジェクトを渡すと、入力欄の名前が `book[...]` でまとめられ、`params[:book]` で受け取れる）：https://guides.rubyonrails.org/form_helpers.html#binding-a-form-to-an-object
+- 参照（新しいオブジェクトか保存済みかで送信先が変わる。`resources` で宣言されていることが前提）：https://guides.rubyonrails.org/form_helpers.html#relying-on-record-identification
+- 参照（`new` アクションで新しいオブジェクトを作るのは、フォームを表示するため）：https://guides.rubyonrails.org/getting_started.html#creating-products
+- 参照（`params.expect` でのパラメーターの受け取り方）：https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters
+
 ### フォーム（ログイン）
 - メールアドレスの入力欄は `type="email"`（`email_field`）にしたうえで、`autocomplete="username"` を指定する（`email` ではなく `username`）
   - 理由：`username` は、最新のブラウザのパスワードマネージャーに認識されるため

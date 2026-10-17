@@ -46,6 +46,22 @@
 | 進行状態 | イベントがどの段階にあるか（開催前、準備完了、開始…） | `status` | — |
 | 作成者 | イベントを作成した管理者 | `administrator`（`administrator_id`） | — |
 
+- ドメインの言葉（用語集に載っているモデル名・属性名・enum の値）は、`config/locales/ja.yml` で管理し、画面では必ず ja.yml から取り出して表示する（View に直接書かない）
+  - モデル名：`Event.model_name.human` → イベント
+  - 属性名：`Event.human_attribute_name(:title)` → タイトル
+  - enum の値：`Event.human_attribute_name("status.#{event.status}")` → 開催前
+  - 理由：用語集と画面の言葉を1か所でそろえ、言葉を変えるときに ja.yml だけを直せば済むようにするため。属性名を ja.yml に書くと、エラーメッセージの項目名も同じ言葉になる
+  - `config/locales` にある `.yml` と `.rb` のファイルは、Railsが自動で読み込むので、`config/locales/ja.yml` を読み込ませる設定は不要
+    - 参照（`config/locales` のファイルが自動で読み込まれること）：https://guides.rubyonrails.org/i18n.html#configuring-the-load-paths-and-default-locale
+  - ただし、標準の言語は英語（`:en`）なので、日本語の訳を使うには `config/application.rb` に `config.i18n.default_locale = :ja` の設定が必要（設定済み）
+    - `config/locales/ja.yml` は設定に関係なく読み込まれるが、訳を探すときに使われるのは今の言語（`I18n.locale`）の訳だけ。`default_locale` を `:ja` にすることで、ja.yml の `ja:` の下の訳が使われるようになる（`:en` のままだと、`Event.human_attribute_name(:title)` は英語の「Title」を返す）
+    - 参照（`I18n.locale` の初期値は `I18n.default_locale` で、その初期値は `:en`。言語を指定しないと `I18n.locale` が使われる）：https://guides.rubyonrails.org/i18n.html#setting-and-passing-a-locale
+    - 参照（`I18n.locale=` などで変えない限り、すべての訳に標準の言語が使われる）：https://guides.rubyonrails.org/i18n.html#managing-the-locale-across-requests
+- 画面だけの言葉（ボタン、メッセージ、見出しなど、用語集に載っていない言葉）は、View に直接書いてよい
+- 新しい用語を追加するときは、先にこのREADMEの「ユビキタス言語（用語集）」の表に追加し、同じ言葉を `config/locales/ja.yml` に書く（このREADMEの表が正、ja.yml はそれに合わせる）
+  - 各機能の設計書の用語集は、その時点の記録。プロジェクトの用語の正は、このREADMEの表
+- 参照（`model_name.human` と `human_attribute_name` で、ja.yml からモデル名・属性名を取り出す方法）：https://guides.rubyonrails.org/i18n.html#active-record-models
+
 ### ドメインの分け方
 - ドメインは、人ではなく業務で分ける
   - 例：いいねを送るのは会員だが、「トークタイム中だけ」「1人だけ」はイベントの進め方のルールなので、イベントドメインに置く
@@ -209,6 +225,68 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - `id` は、Railsのフォームヘルパーが作るもの（例：`email_address`、`password`）のままにする。参照先にある `id="email"` や `id="current-password"` には合わせない
   - 理由：参照先でも `id` は補助的な扱いで、`autocomplete` を指定していれば認識されるため。
 - 参照：https://web.dev/articles/sign-in-form-best-practices
+
+### パフォーマンス（N+1）
+- 目的は、追加のクエリを出しすぎずに、パフォーマンスを悪化させないこと。`includes` などのメソッドを使うこと自体が目的ではない
+  - N+1：一覧のレコードN件を1回のクエリで取得したあと、それぞれの関連を取得するために、追加でN回のクエリが発行されてしまうこと（例：イベント一覧で、各イベントの作成者の名前を表示するたびに、管理者を1件ずつ取得する）
+- 関連をまとめて読み込むときは、基本的に `includes` を使う。クエリの内容によって、`preload` か `eager_load` を自動で使い分けてくれるため
+  - `includes` の自動の選択がクエリに合わない場合は、`preload` や `eager_load` を直接使う
+- `includes` などをむやみに付けない。使う関連だけを、使う場面でまとめて読み込む
+  - 理由：まとめて読み込んでも、Viewでその関連を使わなければ、取得したデータは無駄になり、かえってパフォーマンスを悪くするため
+  - 例：イベント一覧で作成者の名前を表示するなら `includes(:administrator)` を付ける。表示しないなら付けない
+- 一覧を作ったときは、開発環境のログで、1回の画面表示で発行されるクエリの数を確認する
+  - 理由：strict loading がエラーにするのは「関連の遅延読み込み」で、`includes` による読み込みすぎ（読み込んだのに使っていない）は対象ではないため
+    - 読み込みすぎの例：詳細画面の `Event.includes(:administrator, :event_entries)` を一覧に流用すると、一覧で使わない申込まで全件読み込む。strict loading は「読み込んでいない」ときだけエラーにし、「読み込んだのに使っていない」ことは見つけられない
+- N+1 に機械的に気づけるよう、strict loading を `:n_plus_one_only` モードで全体に有効にしている
+
+  | 環境 | 設定 | N+1 になる遅延読み込みが起きたとき |
+  | --- | --- | --- |
+  | 開発・テスト | `strict_loading_by_default = true`、`strict_loading_mode = :n_plus_one_only` | エラーになる（実装中やテストで気づいて直す） |
+  | 本番 | 上に加えて `action_on_strict_loading_violation = :log` | エラーにせず、ログに出す（利用者の画面を止めない） |
+
+  - `:n_plus_one_only` にする理由：全部の遅延読み込みを禁止すると（初期値の `:all`）、詳細画面で1件の作成者を表示するだけでもエラーになり、N+1 にならない場面でも `includes` が必要になるため。N+1 になるときだけ報告させる
+  - 本番をログだけにする理由：見落としたN+1で利用者の画面がエラーになるのを防ぎつつ、ログから見つけて直せるようにするため
+  - 参照（strict loading とは何か、全体で有効にする設定、ログに出す設定）：https://guides.rubyonrails.org/active_record_querying.html#strict-loading
+  - 参照（`strict_loading_by_default` の説明と初期値 `false`）：https://guides.rubyonrails.org/v8.0/configuring.html#config-active-record-strict-loading-by-default
+  - 参照（`strict_loading_mode` の説明と初期値 `:all`）：https://guides.rubyonrails.org/v8.0/configuring.html#config-active-record-strict-loading-mode
+  - 参照（`action_on_strict_loading_violation` の説明と初期値 `:raise`）：https://guides.rubyonrails.org/v8.0/configuring.html#config-active-record-action-on-strict-loading-violation
+- 参照（N+1 と、`includes` / `preload` / `eager_load` の使い分け）：https://guides.rubyonrails.org/active_record_querying.html#eager-loading-associations
+- 参照（`includes` が推奨されること）：https://guides.rubyonrails.org/active_record_querying.html#includes
+
+### タイムゾーン
+- アプリのタイムゾーンを日本時間にする（`config/application.rb` に `config.time_zone = "Tokyo"`。設定済み）。`config.active_record.default_timezone`（DBに保存する日時と、DBから取り出す日時を、UTCとローカルのタイムゾーンのどちらで扱うかを決める設定）は、初期値の `:utc` から変えない
+  - ここでの「ローカルのタイムゾーン」は、Railsが動いているサーバー（開発環境では Docker の `app` コンテナ。Dockerfile で `TZ=UTC`）のタイムゾーンで、`config.time_zone` の日本時間とは別のもの
+
+  | | 時刻 | 決める設定 | 例：管理者が開催開始日時に「2026-11-22 18:00」と入力した場合 |
+  | --- | --- | --- | --- |
+  | 入力の解釈 | 日本時間 | `Time.zone`（＝ `config.time_zone`） | 日本時間の18:00として扱う（公式ドキュメントで直接の記述は見つかっていないが、動作で確認済み） |
+  | DBへの保存 | UTC | `config.active_record.default_timezone` | UTCの09:00として保存する |
+  | 画面の表示 | 日本時間 | `Time.zone`（＝ `config.time_zone`） | 18:00と表示する |
+
+  - `Time.zone` は、リクエストの中で `Time.zone=` などで設定されていなければ、`config.time_zone` のタイムゾーンになる
+
+  - 理由：会員も管理者も日本にいて、イベントも日本時間で開催されるため。アプリのタイムゾーンをUTCのままにすると、入力された「18:00」がUTCとして解釈され、日本時間では翌日の3:00として保存されてしまう
+  - 利用者ごとにタイムゾーンを切り替える方法（アプリはUTCのまま、リクエストごとに利用者のタイムゾーンに切り替える）は採用しない。利用者が複数のタイムゾーンにいるサービス向けの方法で、日本だけのサービスでは、切り替えの仕組みを作るコストに見合わないため。海外の利用者を想定するようになったら移行する（DBはどちらもUTCなので、保存済みのデータを変換する必要はない）
+- 現在時刻や日時の文字列は、アプリのタイムゾーンを使うメソッドで扱う
+
+  | 使わない | 使う | 理由 |
+  | --- | --- | --- |
+  | `Time.now` | `Time.current` | `Time.now` は、Railsが動いているサーバー（開発環境では Docker の `app` コンテナ。Dockerfile で `TZ=UTC`）の時刻を使い、アプリのタイムゾーン（`config.time_zone`）を使わないため |
+  | `Date.today` | `Date.current` | `Date.today` はシステム（Railsが動いているサーバー）のタイムゾーンを使い、`Date.current` はアプリのタイムゾーン（`config.time_zone`）を考慮するため。アプリのタイムゾーン（日本時間）はサーバーのタイムゾーン（UTC）より進んでいるので、日本時間の0:00〜9:00は `Date.today` が前日の日付になる（Railsガイドでも「`Date.today` が `Date.yesterday` と等しくなる可能性がある」とされている） |
+  | `Time.parse(...)` | `Time.zone.parse(...)` | アプリのタイムゾーンで解釈するため |
+
+- 参照（`config.time_zone` の説明）：https://guides.rubyonrails.org/v8.0/configuring.html#config-time-zone
+- 参照（`config.active_record.default_timezone` は、DBから日時を取り出すときに `Time.utc` と `Time.local` のどちらを使うかを決める設定で、初期値は `:utc`）：https://guides.rubyonrails.org/v8.0/configuring.html#config-active-record-default-timezone
+- 参照（タイムスタンプは標準でUTCで、`config.active_record.default_timezone = :local` にするとローカルのタイムゾーンになること）：https://api.rubyonrails.org/classes/ActiveRecord/Timestamp.html#module-activerecord-timestamp-active-record-timestamp
+- 参照（`datetime` と `time` のカラムは、DBにUTCで保存され、取り出すときに `Time.zone` に変換されること）：https://api.rubyonrails.org/classes/ActiveRecord/Timestamp.html#module-activerecord-timestamp-time-zone-aware-attributes
+- 参照（`Time.zone` は、リクエストの中で設定されていなければ `config.time_zone` のタイムゾーンを返すこと）：https://api.rubyonrails.org/classes/Time.html#method-c-zone
+- 参照（`Time.current` は、`config.time_zone` が設定されていれば `Time.zone.now` を返すこと）：https://api.rubyonrails.org/classes/Time.html#method-c-current
+- 参照（`Time.zone.now` は、`Time.zone` のタイムゾーンでの現在時刻を `ActiveSupport::TimeWithZone` で返すこと）：https://api.rubyonrails.org/classes/ActiveSupport/TimeZone.html#method-i-now
+- 参照（`Time.parse` はRubyの標準ライブラリのメソッドで、文字列にタイムゾーンやオフセットがない場合は `zone` 引数で指定すること）：https://docs.ruby-lang.org/en/master/Time.html#method-c-parse
+- 参照（`Time.zone.parse` は、文字列を解析して、`Time.zone` のタイムゾーンの時刻を作ること）：https://api.rubyonrails.org/classes/ActiveSupport/TimeZone.html#method-i-parse
+- 参照（`Date.current` は、`config.time_zone` が設定されていれば `Time.zone.today` を返すこと）：https://api.rubyonrails.org/classes/Date.html#method-c-current
+- 参照（`Date.today` はデフォルトでシステムのタイムゾーンを使うこと、日付を比べるときは `Date.today` ではなく `Date.current` を使うこと、`Date.today` が `Date.yesterday` と等しくなる可能性があること）：https://guides.rubyonrails.org/v8.0/active_support_core_extensions.html#date-current
+- 参照（`Time.now` ではなく `Time.current`、`Time.parse` ではなく `Time.zone.parse` を使うこと、利用者ごとにタイムゾーンを切り替える方法。公式ではないが、Railsの分野で広く参照されている thoughtbot の記事「It's About Time (Zones)」）：https://thoughtbot.com/blog/its-about-time-zones
 
 ### Rakeタスク
 - Railsの機能（モデルやDB）を使うスクリプトは、カスタムRakeタスクとして `lib/tasks/*.rake` に書く（例：管理者の作成 `admin:create`）

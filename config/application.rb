@@ -23,5 +23,11 @@ module MyApp
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # 標準の言語を日本語にする（README「ユビキタス言語（用語集）」参照）
+    config.i18n.default_locale = :ja
+
+    # 入力と表示を日本時間にする。DBには引き続きUTCで保存される（README「タイムゾーン」参照）
+    config.time_zone = "Tokyo"
   end
 end

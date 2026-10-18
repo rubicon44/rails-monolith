@@ -1,0 +1,60 @@
+# ドメインの言葉（モデル名・属性名・enum の値）は、README の「ユビキタス言語（用語集）」の表と同じ言葉にする
+#
+# バリデーションのエラーメッセージは、次の順（対象が狭い順）に探され、最初に見つかったものが使われる（例：Event の title が空のとき）
+#   1. activerecord.errors.models.event.attributes.title.blank （Event の title だけ）
+#   2. activerecord.errors.models.event.blank                  （Event のすべての属性）
+#   3. activerecord.errors.messages.blank                      （Active Record のすべてのモデル）
+#   4. errors.attributes.title.blank                           （すべてのモデルの、title という属性）
+#   5. errors.messages.blank                                   （すべて。このファイルの errors.messages はここ）
+# 特定のモデル・属性だけメッセージを変えたいときは、1 の場所に定義する
+# 参照：https://guides.rubyonrails.org/i18n.html#error-message-scopes
+ja:
+  # モデル名は activerecord.models、属性名は activerecord.attributes、enum の値は activerecord.attributes."モデル名/属性名" に定義する
+  # （Event.model_name.human、Event.human_attribute_name(:title)、Event.human_attribute_name("status.scheduled") で取り出す）
+  # 参照：https://guides.rubyonrails.org/i18n.html#active-record-models
+  activerecord:
+    models:
+      administrator: 管理者
+      event: イベント
+    attributes:
+      administrator:
+        name: 管理者名
+        email_address: メールアドレス
+        password: パスワード
+      event:
+        administrator: 作成者
+        title: タイトル
+        description: 内容
+        male_capacity: 男性の定員
+        female_capacity: 女性の定員
+        entry_start_at: 申込開始日時
+        entry_end_at: 申込終了日時
+        held_start_at: 開催開始日時
+        held_end_at: 開催終了日時
+        status: 進行状態
+      event/status:
+        scheduled: 開催前
+        ready: 準備完了
+        started: 開始
+        talk_time: トークタイム
+        result_announced: 結果発表
+        finished: 終了
+
+  # Rails 標準のエラーメッセージ（このプロジェクトのバリデーションで使うもの）
+  # 全モデル共通の errors.messages に定義する（探される順番は、このファイルの先頭のコメントを参照）
+  # 日本語の訳がないと、エラーにはならず「Translation missing: ja.…」と表示されるため、使うバリデーションの訳はここに必ず定義する
+  # 参照：https://guides.rubyonrails.org/i18n.html#handling-missing-translations
+  errors:
+    format: "%{attribute}%{message}"
+    messages:
+      blank: を入力してください
+      invalid: は不正な値です
+      inclusion: は一覧にありません
+      taken: はすでに存在します
+      required: を入力してください
+      confirmation: と%{attribute}の入力が一致しません
+      too_long: は%{count}文字以内で入力してください
+      password_too_long: が長すぎます
+      not_a_number: は数値で入力してください
+      not_an_integer: は整数で入力してください
+      greater_than_or_equal_to: は%{count}以上の値にしてください

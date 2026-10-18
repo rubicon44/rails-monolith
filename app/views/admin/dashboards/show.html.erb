@@ -4,5 +4,7 @@
 
   <p>ログイン中：<%= current_administrator.name %></p>
 
+  <p><%= link_to "イベント一覧", admin_events_path %></p>
+
   <%= button_to "ログアウト", admin_logout_path, method: :delete %>
 <% end %>

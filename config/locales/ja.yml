@@ -40,6 +40,12 @@ ja:
         result_announced: 結果発表
         finished: 終了
 
+  # 日時の表示形式（View で l(event.held_start_at) と書くと「2026/11/22 18:00」の形になる）
+  # 参照：https://guides.rubyonrails.org/i18n.html#adding-date-time-formats
+  time:
+    formats:
+      default: "%Y/%m/%d %H:%M"
+
   # Rails 標準のエラーメッセージ（このプロジェクトのバリデーションで使うもの）
   # 全モデル共通の errors.messages に定義する（探される順番は、このファイルの先頭のコメントを参照）
   # 日本語の訳がないと、エラーにはならず「Translation missing: ja.…」と表示されるため、使うバリデーションの訳はここに必ず定義する

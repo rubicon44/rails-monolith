@@ -1,0 +1,47 @@
+<%# locals: (event:) -%>
+<%= render layout: "admin/shared/frame" do %>
+  <h1>イベント作成</h1>
+
+  <%= form_with model: [ :admin, event ] do |form| %>
+    <% if event.errors.any? %>
+      <div role="alert">
+        <ul>
+          <% event.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div>
+      <%= form.label :title %>
+      <%= form.text_field :title, required: true, maxlength: 100 %>
+    </div>
+
+    <div>
+      <%= form.label :description %>
+      <%= form.text_area :description, required: true, rows: 5 %>
+    </div>
+
+    <div>
+      <%= form.label :male_capacity %>
+      <%= form.number_field :male_capacity, required: true, min: 1 %>
+    </div>
+
+    <div>
+      <%= form.label :female_capacity %>
+      <%= form.number_field :female_capacity, required: true, min: 1 %>
+    </div>
+
+    <% %i[entry_start_at entry_end_at held_start_at held_end_at].each do |attribute| %>
+      <div>
+        <%= form.label attribute %>
+        <%= form.datetime_local_field attribute, required: true, include_seconds: false %>
+      </div>
+    <% end %>
+
+    <%= form.submit "作成する" %>
+  <% end %>
+
+  <p><%= link_to "イベント一覧に戻る", admin_events_path %></p>
+<% end %>

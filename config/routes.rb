@@ -12,11 +12,12 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   # root "posts#index"
 
-  # 管理画面
   namespace :admin do
     root "dashboards#show"
     get    "login",  to: "sessions#new"
     post   "login",  to: "sessions#create"
     delete "logout", to: "sessions#destroy"
+
+    resources :events, only: %i[index new create]
   end
 end

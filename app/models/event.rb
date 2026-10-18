@@ -31,7 +31,6 @@ class Event < ApplicationRecord
     errors.add(:held_end_at, "は開催開始日時より後にしてください") unless held_start_at < held_end_at
   end
 
-  # 作成するとき、申込開始日時と開催開始日時が現在より後になっているかを確認する
   def start_times_must_be_in_future
     now = Time.current
     errors.add(:entry_start_at, "は現在より後にしてください") if entry_start_at.present? && entry_start_at <= now

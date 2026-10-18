@@ -1,0 +1,39 @@
+<%# locals: (events:) -%>
+<%= render layout: "admin/shared/frame" do %>
+  <h1>イベント一覧</h1>
+
+  <% if flash[:notice] %>
+    <p role="status"><%= flash[:notice] %></p>
+  <% end %>
+
+  <p><%= link_to "イベントを作成する", new_admin_event_path %></p>
+
+  <% if events.empty? %>
+    <p>イベントはまだありません</p>
+  <% else %>
+    <table>
+      <thead>
+        <tr>
+          <th><%= Event.human_attribute_name(:title) %></th>
+          <th>申込期間</th>
+          <th>開催期間</th>
+          <th>定員（男性／女性）</th>
+          <th><%= Event.human_attribute_name(:status) %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% events.each do |event| %>
+          <tr>
+            <td><%= event.title %></td>
+            <td><%= l event.entry_start_at %> 〜 <%= l event.entry_end_at %></td>
+            <td><%= l event.held_start_at %> 〜 <%= l event.held_end_at %></td>
+            <td><%= event.male_capacity %>名／<%= event.female_capacity %>名</td>
+            <td><%= Event.human_attribute_name("status.#{event.status}") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <p><%= link_to "管理画面トップに戻る", admin_root_path %></p>
+<% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_18_063855) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_20_145729) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,17 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_18_063855) do
     t.check_constraint "entry_start_at < entry_end_at AND entry_end_at <= held_start_at AND held_start_at < held_end_at", name: "events_periods_in_order"
     t.check_constraint "male_capacity >= 1 AND female_capacity >= 1", name: "events_capacity_positive"
     t.check_constraint "status::text = ANY (ARRAY['scheduled'::character varying, 'ready'::character varying, 'started'::character varying, 'talk_time'::character varying, 'result_announced'::character varying, 'finished'::character varying]::text[])", name: "events_status_valid"
+  end
+
+  create_table "members", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "email_address", null: false
+    t.string "password_digest", null: false
+    t.string "gender", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email_address"], name: "index_members_on_email_address", unique: true
+    t.check_constraint "gender::text = ANY (ARRAY['male'::character varying, 'female'::character varying]::text[])", name: "members_gender_valid"
   end
 
   add_foreign_key "events", "administrators"

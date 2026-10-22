@@ -230,17 +230,6 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - 理由：参照先でも `id` は補助的な扱いで、`autocomplete` を指定していれば認識されるため。
 - 参照：https://web.dev/articles/sign-in-form-best-practices
 
-### パスワードの長さ
-- パスワードだけでログインする場合は、最小15文字にする（例：会員のログイン）
-  - 理由：NIST SP 800-63B-4 で、パスワードだけでログインする場合は、最小15文字にしなければならない（SHALL）とされているため
-  - 参照（パスワードだけでログインする場合は最小15文字、二段階認証の一部として使う場合は最小8文字）：https://pages.nist.gov/800-63-4/sp800-63b.html
-- 二段階認証を入れた場合は、最小8文字まで短くしてよい
-  - 理由：同じ NIST SP 800-63B-4 で、二段階認証の一部として使うパスワードは、短くしてよいが最小8文字にしなければならない（SHALL）とされているため
-  - 参考（前の版。二段階認証があるかどうかに関係なく最小8文字としていた。「8文字以上」が広まったのはこの版の影響が大きいが、今の版では、パスワードだけでログインする場合は15文字に変わった）：https://pages.nist.gov/800-63-3/sp800-63b.html
-  - 参照（OWASP も同じ考え方。二段階認証があるなら8文字未満、ないなら15文字未満は弱い）：https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
-- 上限は `has_secure_password` が確認する72バイト（bcrypt が扱える長さ）。英数字なら72文字まで入るので、NIST の「最大の長さは、少なくとも64文字まで許すべき」（SHOULD）も満たす
-  - 参照：https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html#method-i-has_secure_password
-
 ### パフォーマンス（N+1）
 - 目的は、追加のクエリを出しすぎずに、パフォーマンスを悪化させないこと。`includes` などのメソッドを使うこと自体が目的ではない
   - N+1：一覧のレコードN件を1回のクエリで取得したあと、それぞれの関連を取得するために、追加でN回のクエリが発行されてしまうこと（例：イベント一覧で、各イベントの作成者の名前を表示するたびに、管理者を1件ずつ取得する）
@@ -309,6 +298,37 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - 参照：https://guides.rubyonrails.org/command_line.html#custom-rake-tasks
 - 引数を受け取るタスクは、Rakeのドキュメントの書き方に合わせる（例：`task :create, [ :name, :email_address ] => [ :environment ] do |_, args|`）
   - 参照：https://ruby.github.io/rake/doc/rakefile_rdoc.html#tasks-that-expect-parameters-and-have-prerequisites
+
+### セキュリティ
+#### 根拠にする指針（NIST・OWASP）
+セキュリティの判断は、NIST の指針を主な根拠にし、OWASP は同じ考え方の補足として使う。
+
+| | NIST | OWASP |
+| --- | --- | --- |
+| 正式名 | National Institute of Standards and Technology（アメリカ国立標準技術研究所） | Open Worldwide Application Security Project |
+| どんな組織か | アメリカ商務省の機関。計測・標準・技術を扱う | ソフトウェアのセキュリティを良くするための、アメリカの非営利団体。資料はすべて無料で公開されている |
+| ここで使う資料 | SP 800-63B：ログイン（認証）の要件を定めた指針。もともとは政府のシステム向け | Authentication Cheat Sheet：ログインの作り方の、開発者向けの実践的な指針 |
+| 扱い | 主な根拠 | 補足（例：パスワードの長さは、OWASP も NIST SP 800-63B を根拠にしている） |
+
+- 参照（NIST がアメリカ商務省の機関であること）：https://www.nist.gov/about-nist
+- 参照（SP 800-63B が、政府のシステムを使う人の認証についての指針であること。冒頭の Abstract の「This guideline focuses on the authentication of subjects who interact with government information systems」）：https://pages.nist.gov/800-63-4/sp800-63b.html
+- 参照（OWASP が、ソフトウェアのセキュリティを良くするための非営利団体で、資料が誰でも無料で使えること）：https://owasp.org/about/
+- 参照（Cheat Sheet Series が、アプリのセキュリティのテーマごとに、大事な情報を簡潔にまとめたものであること）：https://cheatsheetseries.owasp.org/
+- NIST の指針は、要件の強さを SHALL（しなければならない）、SHOULD（すべき）、MAY（してよい）で書き分けている。NIST を根拠にするルールでは、理由にどれにあたるかも書く
+  - 参照（大文字の SHALL・SHOULD・MAY が、それぞれ何を意味するか）：https://pages.nist.gov/800-63-4/sp800-63b.html#notations
+
+#### パスワードの長さ
+- パスワードだけでログインする場合は、最小15文字にする（例：会員のログイン）
+  - 理由：NIST SP 800-63B-4 で、パスワードだけでログインする場合は、最小15文字にしなければならない（SHALL）とされているため
+  - 参照（NIST SP 800-63B-4 の 3.1.1.2「Password Verifiers」の箇条書き「Verifiers and CSPs SHALL require passwords that are used as a single-factor authentication mechanism to be a minimum of 15 characters in length.」）：https://pages.nist.gov/800-63-4/sp800-63b.html#passwordver
+- 二段階認証を入れた場合は、最小8文字まで短くしてよい
+  - 理由：同じ NIST SP 800-63B-4 で、二段階認証の一部として使うパスワードは、短くしてよいが最小8文字にしなければならない（SHALL）とされているため
+  - 参照（上と同じ箇条書きの続きの文「Verifiers and CSPs MAY allow passwords that are only used as part of multi-factor authentication processes to be shorter but SHALL require them to be a minimum of eight characters in length.」）：https://pages.nist.gov/800-63-4/sp800-63b.html#passwordver
+  - 参考（前の版の NIST SP 800-63B の 5.1.1.2「Memorized Secret Verifiers」の文「Verifiers SHALL require subscriber-chosen memorized secrets to be at least 8 characters in length.」。二段階認証があるかどうかに関係なく最小8文字としていた。「8文字以上」が広まったのはこの版の影響が大きいが、今の版では、パスワードだけでログインする場合は15文字に変わった）：https://pages.nist.gov/800-63-3/sp800-63b.html#-5112-memorized-secret-verifiers
+  - 参照（OWASP Authentication Cheat Sheet の「Implement Proper Password Strength Controls」の文「If MFA is enabled passwords shorter than 8 characters are considered to be weak」「If MFA is not enabled passwords shorter than 15 characters are considered to be weak」。NIST と同じ考え方）：https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#implement-proper-password-strength-controls
+- 上限は `has_secure_password` が確認する72バイト（bcrypt が扱える長さ）。英数字なら72文字まで入るので、NIST の「最大の長さは、少なくとも64文字まで許すべき」（SHOULD）も満たす
+  - 参照（`has_secure_password` の説明の、パスワードが72バイト以内であることを確認するバリデーション）：https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html#method-i-has_secure_password
+  - 参照（NIST SP 800-63B-4 の 3.1.1.2「Password Verifiers」の、最小の長さのすぐ下の文「Verifiers and CSPs SHOULD permit a maximum password length of at least 64 characters.」）：https://pages.nist.gov/800-63-4/sp800-63b.html#passwordver
 
 ## 進め方のログ
 ### これまで（2026/10/12）

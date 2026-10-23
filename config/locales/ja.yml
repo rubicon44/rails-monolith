@@ -16,6 +16,7 @@ ja:
     models:
       administrator: 管理者
       event: イベント
+      member: 会員
     attributes:
       administrator:
         name: 管理者名
@@ -32,6 +33,12 @@ ja:
         held_start_at: 開催開始日時
         held_end_at: 開催終了日時
         status: 進行状態
+      member:
+        name: 会員名
+        email_address: メールアドレス
+        password: パスワード
+        password_confirmation: パスワード（確認）
+        gender: 性別
       event/status:
         scheduled: 開催前
         ready: 準備完了
@@ -39,6 +46,16 @@ ja:
         talk_time: トークタイム
         result_announced: 結果発表
         finished: 終了
+      member/gender:
+        male: 男性
+        female: 女性
+    errors:
+      models:
+        member:
+          attributes:
+            gender:
+              # 選ぶ項目なので「入力してください」ではなく「選択してください」にする
+              blank: を選択してください
 
   # 日時の表示形式（View で l(event.held_start_at) と書くと「2026/11/22 18:00」の形になる）
   # 参照：https://guides.rubyonrails.org/i18n.html#adding-date-time-formats
@@ -60,6 +77,7 @@ ja:
       required: を入力してください
       confirmation: と%{attribute}の入力が一致しません
       too_long: は%{count}文字以内で入力してください
+      too_short: は%{count}文字以上で入力してください
       password_too_long: が長すぎます
       not_a_number: は数値で入力してください
       not_an_integer: は整数で入力してください

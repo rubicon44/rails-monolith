@@ -1,0 +1,12 @@
+<%# locals: () -%>
+<%= render layout: "user/shared/frame" do %>
+  <h1>トップ</h1>
+
+  <% if flash[:notice] %>
+    <p role="status"><%= flash[:notice] %></p>
+  <% end %>
+
+  <p>ログイン中：<%= current_member.name %></p>
+
+  <%= button_to "ログアウト", logout_path, method: :delete %>
+<% end %>

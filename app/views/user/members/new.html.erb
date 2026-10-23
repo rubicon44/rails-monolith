@@ -1,0 +1,48 @@
+<%# locals: (member:) -%>
+<%= render layout: "user/shared/frame" do %>
+  <h1>会員登録</h1>
+
+  <%= form_with model: member do |form| %>
+    <% if member.errors.any? %>
+      <div role="alert">
+        <ul>
+          <% member.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div>
+      <%= form.label :name %>
+      <%= form.text_field :name, required: true, maxlength: 50, autocomplete: "name" %>
+    </div>
+
+    <div>
+      <%= form.label :email_address %>
+      <%= form.email_field :email_address, required: true, autocomplete: "username" %>
+    </div>
+
+    <div>
+      <%= form.label :password %>
+      <%= form.password_field :password, required: true, minlength: 15, autocomplete: "new-password" %>
+    </div>
+
+    <div>
+      <%= form.label :password_confirmation %>
+      <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password" %>
+    </div>
+
+    <fieldset>
+      <legend><%= Member.human_attribute_name(:gender) %></legend>
+      <% Member.genders.each_key do |gender| %>
+        <%= form.radio_button :gender, gender, required: true %>
+        <%= form.label :gender, Member.human_attribute_name("gender.#{gender}"), value: gender %>
+      <% end %>
+    </fieldset>
+
+    <%= form.submit "登録する" %>
+  <% end %>
+
+  <p><%= link_to "ログインはこちら", login_path %></p>
+<% end %>

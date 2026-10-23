@@ -1,8 +1,11 @@
 module Admin
   class SessionsController < BaseController
+    # ログイン画面は、ログインしていない人が使う画面なので、BaseController のログインの確認（require_admin_login）を外す
+    # 外したので、ログイン中かどうかは new の中で確認する
     skip_before_action :require_admin_login, only: %i[new create]
 
     def new
+      # ログイン中の管理者にはログイン画面を見せず、管理画面トップに移す。ログインしていない人にだけ、else 側で画面を表示する
       if current_administrator
         redirect_to admin_root_path
       else

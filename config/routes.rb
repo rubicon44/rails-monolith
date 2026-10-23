@@ -20,4 +20,14 @@ Rails.application.routes.draw do
 
     resources :events, only: %i[index new create]
   end
+
+  # ユーザー画面（URL に接頭辞は付けず、コントローラーは User:: に置く）
+  scope module: :user do
+    root "dashboards#show"
+    get    "login",  to: "sessions#new"
+    post   "login",  to: "sessions#create"
+    delete "logout", to: "sessions#destroy"
+
+    resources :members, only: %i[new create]
+  end
 end

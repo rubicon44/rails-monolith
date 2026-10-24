@@ -9,6 +9,7 @@ module Admin
     end
 
     def create
+      # 作成者は、書き換えを防ぐためフォームから受け取らない
       event = Event.new(event_params.merge(administrator: current_administrator))
 
       if event.save
@@ -20,7 +21,7 @@ module Admin
 
     private
 
-    # 進行状態（status）と作成者（administrator）は受け取らない（改ざんされたリクエストで、いきなり「開始」にしたり、別の管理者を作成者にしたりできないようにする）
+    # 進行状態と作成者は、書き換えを防ぐため受け取らない（いきなり「開始」にしたり、別の管理者を作成者にしたりできないようにする）
     def event_params
       params.expect(event: [
         :title, :description, :male_capacity, :female_capacity,

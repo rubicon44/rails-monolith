@@ -9,8 +9,6 @@ module Admin
     end
 
     def create
-      # 作成者はフォームからは受け取らず、ログイン中の管理者を設定する
-      # （フォームの値は書き換えられるため、別の管理者を作成者にしたイベントを作れないようにする）
       event = Event.new(event_params.merge(administrator: current_administrator))
 
       if event.save

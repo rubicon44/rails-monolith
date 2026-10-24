@@ -84,6 +84,9 @@
   - 例：イベント集約は会員と管理者の両方から使われるが、両方のドメインには入れず、イベントドメインにだけ置く（両方に置くと、定員のチェックが2か所に書かれる）
 
 ### ドメインモデル図
+#### 2026/10/25
+https://github.com/user-attachments/assets/12aa1082-7ec5-4307-b358-a6ce8dc447db
+
 #### 2026/10/19
 https://github.com/user-attachments/assets/31a59c13-1f48-40fd-91a9-c2d0002767a2
 

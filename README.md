@@ -335,6 +335,33 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - 参照（`has_secure_password` の説明の、パスワードが72バイト以内であることを確認するバリデーション）：https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html#method-i-has_secure_password
   - 参照（NIST SP 800-63B-4 の 3.1.1.2「Password Verifiers」の、最小の長さのすぐ下の文「Verifiers and CSPs SHOULD permit a maximum password length of at least 64 characters.」）：https://pages.nist.gov/800-63-4/sp800-63b.html#passwordver
 
+## Modelが大きくなったときの分け方（DDDの知見をRailsに当てはめる）
+### 前提：DDDで分ける単位は2段階ある
+| 段階 | DDDでの名前 | 分けるもの | このプロジェクトでの例 |
+| --- | --- | --- | --- |
+| 大きく分ける（戦略的設計） | サブドメイン、境界づけられたコンテキスト | 業務の領域 | 会員ドメイン、管理者ドメイン、イベントドメイン |
+| 1つのドメインの中で分ける（戦術的設計） | 集約、エンティティ、値オブジェクト | ルールとデータのまとまり | イベント集約の中の、イベント（エンティティ）と申込期間（値オブジェクト） |
+
+- 「ドメインの分け方」は、上の段の話
+- 参照（値オブジェクト：ID を持たず、値そのもので意味が決まるもの）：https://martinfowler.com/bliki/ValueObject.html
+- 参照（境界づけられたコンテキスト：同じ言葉が、コンテキストごとに違う意味を持つことがある）：https://martinfowler.com/bliki/BoundedContext.html
+
+### まずは集約の中を分ける
+- 呼ぶ側（会員側・管理者側）では分けない。同じルールが2か所に書かれ、片方だけ直して食い違うため
+  - 例：受付状態は、会員から呼んでも管理者から呼んでも「申込期間と現在の日時で決まる」という、イベントの業務のルール
+- ドメインはそのままにして、集約の中を、業務の概念（変わる理由が同じもの）ごとに値オブジェクトや PORO に切り出す
+  - 例：申込期間を `Event::EntryPeriod` に切り出し、受付状態のルールを持たせる。呼ぶ側は `event.entry_period` のように、必ずルート（`Event`）を通して使う
+  - 切り出す目安：同じ概念のメソッドが集まってきたとき、その概念だけをテストしにくいとき、1つの概念のルールを直すときに、そのコードが Model のあちこちに散らばっていて、探すために関係のないメソッドまで読むようになったとき
+
+### それでも足りないときは、コンテキストを分ける
+- 同じ「イベント」でも、言葉とルールが本当に違い、別々の理由で変わるなら、別のコンテキストの別のモデルにすることがある（例：集客では「売る商品」、運営では「進める催し」）。分ける理由は「誰が呼ぶか」ではなく、言葉とルールが違うかどうか
+- 普通の規模の Rails アプリでは、あまり分けない。Active Record はモデルとテーブルが1対1で、Rails の規約も「1つの概念に1つのモデル」を前提にしているため、分けるコストに見合わないことが多い
+- 大きな Rails アプリでは、1つのアプリのまま中を区切る（モジュラーモノリス）。このときも、業務の領域（集客、運営、決済など）で分ける
+  - 参照（Rails Engine：アプリの一部を、独立した小さなアプリのように切り出す機能）：https://guides.rubyonrails.org/engines.html#what-are-engines-questionmark
+  - 参照（Packwerk：アプリの中をパッケージに分け、パッケージの間の依存を確認するツール）：https://github.com/Shopify/packwerk
+  - 参照（Shopify が、大きな Rails のモノリスを、分割せずに中を区切って保守しやすくした話）：https://shopify.engineering/deconstructing-monolith-designing-software-maximizes-developer-productivity
+- このプロジェクトでは、イベントドメインを1つにし、Model が大きくなったら、まず集約の中を分ける
+
 ## 進め方のログ
 ### これまで（2026/10/12）
 1. 全体の大枠を決めた：管理者ドメイン／会員ドメイン／イベントドメイン（コアドメイン）

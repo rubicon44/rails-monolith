@@ -81,7 +81,7 @@ GEM
     benchmark (0.5.0)
     bigdecimal (4.1.2)
     bindex (0.8.1)
-    bootsnap (1.26.0)
+    bootsnap (1.26.1)
       msgpack (~> 1.5)
     brakeman (8.1.0)
       racc
@@ -159,7 +159,7 @@ GEM
     minitest (6.0.6)
       drb (~> 2.0)
       prism (~> 1.5)
-    msgpack (1.8.5)
+    msgpack (1.8.6)
     net-imap (0.6.4)
       date
       net-protocol
@@ -177,12 +177,15 @@ GEM
     nio4r (2.7.5)
     nokogiri (1.19.3-aarch64-linux-musl)
       racc (~> 1.4)
+    nokogiri (1.19.3-x86_64-linux-gnu)
+      racc (~> 1.4)
     ostruct (0.6.3)
     parallel (2.3.0)
     parser (3.3.12.0)
       ast (~> 2.4.1)
       racc
     pg (1.7.0-aarch64-linux-musl)
+    pg (1.7.0-x86_64-linux)
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
@@ -310,6 +313,7 @@ GEM
     stringio (3.2.0)
     thor (1.5.0)
     thruster (0.1.27-aarch64-linux)
+    thruster (0.1.27-x86_64-linux)
     timeout (0.6.1)
     tsort (0.2.0)
     turbo-rails (2.0.23)
@@ -337,6 +341,7 @@ GEM
 
 PLATFORMS
   aarch64-linux-musl
+  x86_64-linux
 
 DEPENDENCIES
   bcrypt (~> 3.1.7)

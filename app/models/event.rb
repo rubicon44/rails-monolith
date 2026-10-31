@@ -18,8 +18,12 @@ class Event < ApplicationRecord
   validate :periods_must_be_in_order
   validate :start_times_must_be_in_future, on: :create
 
-  # 開催予定のイベント（開催開始日時が現在以降）。会員に見せるイベント
-  scope :upcoming, -> { where(held_start_at: Time.current..) }
+  # 受付中のイベント（申込開始日時 ≦ 現在 ＜ 申込終了日時）。会員に見せるのは、受付中のイベントだけ
+  # 申込終了日時ちょうどは受付終了にする（entry_status と同じ境界）。範囲では「現在より後」を書けないので、where.not で「現在以前ではない」と書く
+  scope :accepting_entries, -> {
+    now = Time.current
+    where(entry_start_at: ..now).where.not(entry_end_at: ..now)
+  }
 
   # 受付状態。申込期間と現在の日時から決まるので、DB には保存しない
   def entry_status

@@ -48,7 +48,7 @@
 | 進行状態 | イベントがどの段階にあるか（開催前、準備完了、開始…） | `status` | — |
 | 作成者 | イベントを作成した管理者 | `administrator`（`administrator_id`） | — |
 | 受付状態 | 申込期間と現在の日時から決まる、申込を受け付けているかどうか | `entry_status`（`not_yet_open`：受付前、`accepting`：受付中、`closed`：受付終了） | — |
-| 開催予定のイベント | 開催開始日時が現在以降のイベント | `Event.upcoming` | — |
+| 受付中のイベント | 受付状態が受付中のイベント（申込開始日時 ≦ 現在 ＜ 申込終了日時）。会員に見せるのは、受付中のイベントだけ | `Event.accepting_entries` | — |
 
 - ドメインの言葉（用語集に載っているモデル名・属性名・enum の値）は、`config/locales/ja.yml` で管理し、画面では必ず ja.yml から取り出して表示する（View に直接書かない）
   - モデル名：`Event.model_name.human` → イベント
@@ -146,21 +146,21 @@ https://github.com/user-attachments/assets/ed618838-3649-42b1-8d44-d1f0bf58fd41
 
 #### scope とクラスメソッドの使い分け
 - **Relation（`ActiveRecord::Relation`）**：DB への問い合わせの条件をまとめたオブジェクト。`where`、`order`、`joins` などが返す。取ってきたデータそのものではなく、データが必要になったとき（`each`、`count` など）に初めて SQL を実行する
-  - Relation を返すメソッドは、後ろに続けて呼べる（例：`Event.upcoming.order(:held_start_at)`）。1件のレコードを返すメソッド（`first`、`find` など）は、続けて呼べないので最後に置く
+  - Relation を返すメソッドは、後ろに続けて呼べる（例：`Event.accepting_entries.order(:held_start_at)`）。1件のレコードを返すメソッド（`first`、`find` など）は、続けて呼べないので最後に置く
   - 参照（Rails ガイド「3.3 Understanding Method Chaining」の「You can chain methods in a statement when the previous method called returns an ActiveRecord::Relation, like all, where, and joins. Methods that return a single record must be at the end of the statement.」と「the query is sent only when the data is actually needed」）：https://guides.rubyonrails.org/active_record_querying.html#understanding-method-chaining
 - **よく使う探す条件（Relation を返すもの）は、scope で書く**
-  - 例：`scope :upcoming, -> { where(held_start_at: Time.current..) }`（開催予定のイベント）
+  - 例：`scope :accepting_entries, -> { ... }`（受付中のイベント）
   - 理由：scope は、条件が合わないとき（`nil` や `false` のとき）も、かわりに全件の Relation を返すので、後ろに続けて呼んでもエラーにならない。条件付きのクラスメソッドは `nil` を返し、続けて呼ぶと `NoMethodError` になる。また、scope は Active Record や Relation がすでに持っているメソッドと同じ名前で定義しようとするとエラーになるので、上書きに気付ける
-  - scope は、クラスメソッドを定義する書き方の1つ（`def self.upcoming` と書くのとほぼ同じ）。中では `Event.` を付けずに `where(...)` と書く
+  - scope は、クラスメソッドを定義する書き方の1つ（`def self.accepting_entries` と書くのとほぼ同じ）。中では `Event.` を付けずに `where(...)` と書く
   - 参照（scope は、よく使うクエリを定義するもの。「Scoping allows you to specify commonly-used queries」）：https://guides.rubyonrails.org/active_record_querying.html#scopes
   - 参照（scope は条件が false でも必ず Relation を返し、クラスメソッドは nil を返す）：https://guides.rubyonrails.org/active_record_querying.html#using-conditionals
   - 参照（scope は、クラスメソッドを追加する糖衣構文。nil か false を返したときは全件の scope を返す）：https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Named/ClassMethods.html#method-i-scope
   - 参照（名前のぶつかりを確認する、Rails 8.0.5 の scope のソース）：https://github.com/rails/rails/blob/v8.0.5/activerecord/lib/active_record/scoping/named.rb
 - **1か所でしか使わない条件は、scope にしない**。その条件を使うメソッドの中に書く
   - 例：管理者向けの CSV 出力のためだけに組み立てる絞り込みは、CSV 出力の処理の中に書く
-  - 理由：scope は「このモデルをどんな条件で探せるか」の一覧になる。1か所でしか使わない条件まで並べると、一覧が長くなり、業務で意味のある条件（開催予定、受付中など）が埋もれてしまう
+  - 理由：scope は「このモデルをどんな条件で探せるか」の一覧になる。1か所でしか使わない条件まで並べると、一覧が長くなり、業務で意味のある条件（受付中など）が埋もれてしまう
 - **数・合計・1件のレコードなど、Relation 以外を返すものは、scope にしない**。クラスメソッドで書く
-  - 例：次に開催するイベントを1件返すなら、`def self.next_held` のようなクラスメソッドにする（中で `upcoming.order(:held_start_at).first` のように scope を使うのはよい）
+  - 例：次に開催するイベントを1件返すなら、`def self.next_held` のようなクラスメソッドにする（中で `where(held_start_at: Time.current..).order(:held_start_at).first` のように、Relation を組み立てて最後に1件を取り出すのはよい）
   - 理由：scope は、Relation を返すことを想定しているため（API ドキュメントの「The method is intended to return an ActiveRecord::Relation object」）
 
 ### パラメーターの受け取り

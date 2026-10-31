@@ -141,7 +141,25 @@ https://github.com/user-attachments/assets/ed618838-3649-42b1-8d44-d1f0bf58fd41
     - 向きは「別の関心ごと → 対象」の一方向にする（例：編集履歴はパーティーを知っているが、パーティーは編集履歴を知らない。パーティーのModelの中で編集履歴を作らず、Controllerから呼ぶ）
     - 対象の中身（カラム）を直接たくさん読むより、公開されたメソッドを使う（対象のカラムが変わるたびに、受け取る側も直すことにならないように）
     - 対象のルールを、受け取った側で作り直さない（例：編集履歴の中で受付中かを自分で計算せず、`party.accepting_entries?` を呼ぶ）
-- 参照（検索の条件をクラスメソッドとして定義する `scope`。`def self.` で定義したクラスメソッドとほぼ同じ）：https://guides.rubyonrails.org/active_record_querying.html#passing-in-arguments
+
+#### scope とクラスメソッドの使い分け
+- **Relation（`ActiveRecord::Relation`）**：DB への問い合わせの条件をまとめたオブジェクト。`where`、`order`、`joins` などが返す。取ってきたデータそのものではなく、データが必要になったとき（`each`、`count` など）に初めて SQL を実行する
+  - Relation を返すメソッドは、後ろに続けて呼べる（例：`Event.upcoming.order(:held_start_at)`）。1件のレコードを返すメソッド（`first`、`find` など）は、続けて呼べないので最後に置く
+  - 参照（Rails ガイド「3.3 Understanding Method Chaining」の「You can chain methods in a statement when the previous method called returns an ActiveRecord::Relation, like all, where, and joins. Methods that return a single record must be at the end of the statement.」と「the query is sent only when the data is actually needed」）：https://guides.rubyonrails.org/active_record_querying.html#understanding-method-chaining
+- **よく使う探す条件（Relation を返すもの）は、scope で書く**
+  - 例：`scope :upcoming, -> { where(held_start_at: Time.current..) }`（開催予定のイベント）
+  - 理由：scope は、条件が合わないとき（`nil` や `false` のとき）も、かわりに全件の Relation を返すので、後ろに続けて呼んでもエラーにならない。条件付きのクラスメソッドは `nil` を返し、続けて呼ぶと `NoMethodError` になる。また、scope は Active Record や Relation がすでに持っているメソッドと同じ名前で定義しようとするとエラーになるので、上書きに気付ける
+  - scope は、クラスメソッドを定義する書き方の1つ（`def self.upcoming` と書くのとほぼ同じ）。中では `Event.` を付けずに `where(...)` と書く
+  - 参照（scope は、よく使うクエリを定義するもの。「Scoping allows you to specify commonly-used queries」）：https://guides.rubyonrails.org/active_record_querying.html#scopes
+  - 参照（scope は条件が false でも必ず Relation を返し、クラスメソッドは nil を返す）：https://guides.rubyonrails.org/active_record_querying.html#using-conditionals
+  - 参照（scope は、クラスメソッドを追加する糖衣構文。nil か false を返したときは全件の scope を返す）：https://api.rubyonrails.org/classes/ActiveRecord/Scoping/Named/ClassMethods.html#method-i-scope
+  - 参照（名前のぶつかりを確認する、Rails 8.0.5 の scope のソース）：https://github.com/rails/rails/blob/v8.0.5/activerecord/lib/active_record/scoping/named.rb
+- **1か所でしか使わない条件は、scope にしない**。その条件を使うメソッドの中に書く
+  - 例：管理者向けの CSV 出力のためだけに組み立てる絞り込みは、CSV 出力の処理の中に書く
+  - 理由：scope は「このモデルをどんな条件で探せるか」の一覧になる。1か所でしか使わない条件まで並べると、一覧が長くなり、業務で意味のある条件（開催予定、受付中など）が埋もれてしまう
+- **数・合計・1件のレコードなど、Relation 以外を返すものは、scope にしない**。クラスメソッドで書く
+  - 例：次に開催するイベントを1件返すなら、`def self.next_held` のようなクラスメソッドにする（中で `upcoming.order(:held_start_at).first` のように scope を使うのはよい）
+  - 理由：scope は、Relation を返すことを想定しているため（API ドキュメントの「The method is intended to return an ActiveRecord::Relation object」）
 
 ### パラメーターの受け取り
 - フォームの送信など、必ず送られてくるパラメーターは `params.expect` で受け取る（`require(...).permit(...)` は使わない）

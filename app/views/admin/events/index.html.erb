@@ -18,6 +18,7 @@
           <th>申込期間</th>
           <th>開催期間</th>
           <th>定員（男性／女性）</th>
+          <th><%= Event.human_attribute_name(:entry_status) %></th>
           <th><%= Event.human_attribute_name(:status) %></th>
         </tr>
       </thead>
@@ -28,6 +29,7 @@
             <td><%= l event.entry_start_at %> 〜 <%= l event.entry_end_at %></td>
             <td><%= l event.held_start_at %> 〜 <%= l event.held_end_at %></td>
             <td><%= event.male_capacity %>名／<%= event.female_capacity %>名</td>
+            <td><%= Event.human_attribute_name("entry_status.#{event.entry_status}") %></td>
             <td><%= Event.human_attribute_name("status.#{event.status}") %></td>
           </tr>
         <% end %>

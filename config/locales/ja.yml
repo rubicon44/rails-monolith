@@ -33,6 +33,7 @@ ja:
         held_start_at: 開催開始日時
         held_end_at: 開催終了日時
         status: 進行状態
+        entry_status: 受付状態
       member:
         name: 会員名
         email_address: メールアドレス
@@ -46,6 +47,10 @@ ja:
         talk_time: トークタイム
         result_announced: 結果発表
         finished: 終了
+      event/entry_status:
+        not_yet_open: 受付前
+        accepting: 受付中
+        closed: 受付終了
       member/gender:
         male: 男性
         female: 女性

@@ -8,5 +8,7 @@
 
   <p>ログイン中：<%= current_member.name %></p>
 
+  <p><%= link_to "イベント一覧", events_path %></p>
+
   <%= button_to "ログアウト", logout_path, method: :delete %>
 <% end %>

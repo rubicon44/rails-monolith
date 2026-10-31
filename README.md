@@ -47,6 +47,8 @@
 | 開催期間 | イベントを開催する期間 | `held_start_at` 〜 `held_end_at` | — |
 | 進行状態 | イベントがどの段階にあるか（開催前、準備完了、開始…） | `status` | — |
 | 作成者 | イベントを作成した管理者 | `administrator`（`administrator_id`） | — |
+| 受付状態 | 申込期間と現在の日時から決まる、申込を受け付けているかどうか | `entry_status`（`not_yet_open`：受付前、`accepting`：受付中、`closed`：受付終了） | — |
+| 開催予定のイベント | 開催開始日時が現在以降のイベント | `Event.upcoming` | — |
 
 - ドメインの言葉（用語集に載っているモデル名・属性名・enum の値）は、`config/locales/ja.yml` で管理し、画面では必ず ja.yml から取り出して表示する（View に直接書かない）
   - モデル名：`Event.model_name.human` → イベント

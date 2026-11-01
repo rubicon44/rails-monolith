@@ -298,9 +298,10 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - 行数の多いテーブル（目安：数万~数十万行以上）に付ける
     - 理由：行が少ないと、DB はインデックスを使わずに、全件を読むほうを選ぶため
   - 数字は実務の目安で、公式の基準ではない。実際にインデックスを使うかは、PostgreSQL のプランナーが統計情報（`ANALYZE` で集める）をもとに決める。迷ったら `EXPLAIN` で確かめる
-- ただし、今は行が少なくても、会員の数に比例して増え、画面を開くたびに検索されるテーブルには、テーブルを作るときに付ける
-  - 理由：行が0件のうちに付ければ、ロックも時間もかからないため。大きくなってから足すと、作っている間はテーブルへの書き込みが止まる（`CREATE INDEX`）か、もっと時間がかかり手順も増える（`CREATE INDEX CONCURRENTLY`）。メンテナンス時間に足すこともできるが、告知や作業の手間がかかる
-  - 例：event_entries の `member_id`、notifications の `[member_id, created_at]`
+- 行が増えて必要になったら、後からインデックスを足す
+  - 例：event_entries の `member_id`、notifications の `[member_id, created_at]` は、会員の数に比例して増えるが、今は行が少ないので付けない
+  - 後から足すときは、メンテナンス時間に足すか、`CREATE INDEX CONCURRENTLY`（Rails では `algorithm: :concurrently`）で足す
+    - 理由：ふつうに足すと、インデックスを作っている間、テーブルへの書き込みが止まるため。`CONCURRENTLY` なら書き込みは止まらないが、時間がかかり、マイグレーションのトランザクションも外す必要がある（`disable_ddl_transaction!`）
 - 重複を防ぎたい列には、一意インデックス（`unique: true`）を付ける
   - 一意インデックスは、正しさ（重複を防ぐ）のために付けるので、行数やカーディナリティの目安に関係なく付ける
   - 一意インデックスは、そもそもインデックスとの相性がよい。すべての値が違う（カーディナリティが最大）ので、全部の列を指定すれば、当たるのは1行以下になるため（公式の記述ではなく、一意の定義からの推論）
@@ -320,7 +321,7 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - 参照（プランナーは、`WHERE` の条件ごとに当たる行の割合（selectivity：選択率）を見積もること。統計情報には、列の値の種類の数と、よく出る値（`most_common_vals`）が入ること）：https://www.postgresql.org/docs/current/planner-stats.html
 - 参照（インデックスを作っている間は、テーブルへの書き込みが止まること、`CONCURRENTLY` はもっと時間がかかること）：https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
 - 参照（`uniqueness` のバリデーションだけでは、同時のリクエストを防げないこと）：https://guides.rubyonrails.org/active_record_validations.html#uniqueness
-- 参照（`add_index` の `unique` オプション）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_index
+- 参照（`add_index` の `unique` オプション、`algorithm: :concurrently` と、それがトランザクションの中ではできないこと）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_index
 
 ### タイムゾーン
 - アプリのタイムゾーンを日本時間にする（`config/application.rb` に `config.time_zone = "Tokyo"`。設定済み）。`config.active_record.default_timezone`（DBに保存する日時と、DBから取り出す日時を、UTCとローカルのタイムゾーンのどちらで扱うかを決める設定）は、初期値の `:utc` から変えない

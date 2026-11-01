@@ -285,6 +285,43 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - 参照（N+1 と、`includes` / `preload` / `eager_load` の使い分け）：https://guides.rubyonrails.org/active_record_querying.html#eager-loading-associations
 - 参照（`includes` が推奨されること）：https://guides.rubyonrails.org/active_record_querying.html#includes
 
+### パフォーマンス（インデックス）
+- インデックスは、データの取得（`WHERE` での絞り込み）を速くするために付ける。単一列のインデックスでも、複合インデックスでも同じ
+  - 並び順に使われるのは、副次的な効果として扱う。インデックスはキーの順に並んでいるので、`ORDER BY` がインデックスの並びと合えば、インデックスを読んだ順がそのまま `ORDER BY` の順になり、DB が並べ替えを省けることがある
+    - 「省けることがある」理由：インデックスを読むか、テーブルを読んでから並べ替えるかは、プランナーが決めるため。テーブルの大部分を読む検索では、並べ替えるほうが速いことが多い
+  - インデックスを付けても、`ORDER BY` を書かなければ並び順は保証されない。並び順が必要なら、必ず `order` を書く
+- インデックスを付けるかどうかは、次の目安で決める
+  - カーディナリティ（列の値の種類の数）が高い列に付ける
+    - 例：`member_id` は会員の数だけ値の種類があるので付ける。`gender` は2種類しかないので付けない
+  - 実際の検索の条件で当たる行の割合（選択率）が、全体の一部（目安：10〜20%以下）になるときに付ける
+    - カーディナリティとは別のこと。カーディナリティは「列に値が何種類あるか」、選択率は「その検索の条件で、全体の何割が当たるか」
+  - 行数の多いテーブル（目安：数万~数十万行以上）に付ける
+    - 理由：行が少ないと、DB はインデックスを使わずに、全件を読むほうを選ぶため
+  - 数字は実務の目安で、公式の基準ではない。実際にインデックスを使うかは、PostgreSQL のプランナーが統計情報（`ANALYZE` で集める）をもとに決める。迷ったら `EXPLAIN` で確かめる
+- ただし、今は行が少なくても、会員の数に比例して増え、画面を開くたびに検索されるテーブルには、テーブルを作るときに付ける
+  - 理由：行が0件のうちに付ければ、ロックも時間もかからないため。大きくなってから足すと、作っている間はテーブルへの書き込みが止まる（`CREATE INDEX`）か、もっと時間がかかり手順も増える（`CREATE INDEX CONCURRENTLY`）。メンテナンス時間に足すこともできるが、告知や作業の手間がかかる
+  - 例：event_entries の `member_id`、notifications の `[member_id, created_at]`
+- 重複を防ぎたい列には、一意インデックス（`unique: true`）を付ける
+  - 一意インデックスは、正しさ（重複を防ぐ）のために付けるので、行数やカーディナリティの目安に関係なく付ける
+  - 一意インデックスは、そもそもインデックスとの相性がよい。すべての値が違う（カーディナリティが最大）ので、全部の列を指定すれば、当たるのは1行以下になるため（公式の記述ではなく、一意の定義からの推論）
+  - 一意インデックスも、普通のインデックスと同じ B-tree で、検索にもそのまま使われる。同じ列に、普通のインデックスを別に作らない
+    - 理由：作っても重複するだけで、検索は速くならず、書き込みのたびに両方を更新するコストと容量だけが増えるため
+  - `uniqueness` のバリデーションとセットにする
+    - 理由：バリデーションは「保存の前に SELECT で確かめる」だけなので、同時に届いた2つのリクエストは、どちらも「重複なし」と判断して保存してしまう。一意インデックスなら、2件目の INSERT を DB が拒否する（`ActiveRecord::RecordNotUnique`）
+  - 複合の一意インデックスで一意になるのは、列の組み合わせ（それぞれの列は一意でなくてよい）
+  - 一意インデックスの列は、値が必ずあるなら `null: false` にする（公式のルールではなく、下の NULL の扱いからの判断）
+    - 理由：NULL どうしは同じ値とみなされず、NULL を含む行は、一意インデックスがあっても何行でも入ってしまうため
+- 参照（インデックスが `ORDER BY` を並べ替えなしで満たせること、使うかどうかはプランナーが決めること）：https://www.postgresql.org/docs/current/indexes-ordering.html
+- 参照（`ORDER BY` がなければ、DB がいちばん速く出せる順で返すこと。SQL は、`ORDER BY` で指定しない限り、特定の順で返すことを約束していないこと）：https://www.postgresql.org/docs/current/sql-select.html#SQL-LIMIT
+- 参照（一意にできるのは B-tree インデックスだけであること、一意インデックスは重複を許さないこと、複合の一意は全部の列が同じときだけ拒否すること、NULL は同じとみなされないこと、一意にした列に別のインデックスを作っても重複するだけであること）：https://www.postgresql.org/docs/current/indexes-unique.html
+- 参照（インデックスはデータベース全体に負荷を加えるので、考えて使うこと）：https://www.postgresql.org/docs/current/indexes.html
+- 参照（一意制約は、それぞれの列ではなく組み合わせで一意にすること、一意制約があっても、列のどれかに NULL を含む行は重複して保存できること）：https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS
+- 参照（行が少ないとインデックスは使われないこと、`ANALYZE` を先に実行すること）：https://www.postgresql.org/docs/current/indexes-examine.html
+- 参照（プランナーは、`WHERE` の条件ごとに当たる行の割合（selectivity：選択率）を見積もること。統計情報には、列の値の種類の数と、よく出る値（`most_common_vals`）が入ること）：https://www.postgresql.org/docs/current/planner-stats.html
+- 参照（インデックスを作っている間は、テーブルへの書き込みが止まること、`CONCURRENTLY` はもっと時間がかかること）：https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
+- 参照（`uniqueness` のバリデーションだけでは、同時のリクエストを防げないこと）：https://guides.rubyonrails.org/active_record_validations.html#uniqueness
+- 参照（`add_index` の `unique` オプション）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_index
+
 ### タイムゾーン
 - アプリのタイムゾーンを日本時間にする（`config/application.rb` に `config.time_zone = "Tokyo"`。設定済み）。`config.active_record.default_timezone`（DBに保存する日時と、DBから取り出す日時を、UTCとローカルのタイムゾーンのどちらで扱うかを決める設定）は、初期値の `:utc` から変えない
   - ここでの「ローカルのタイムゾーン」は、Railsが動いているサーバー（開発環境では Docker の `app` コンテナ。Dockerfile で `TZ=UTC`）のタイムゾーンで、`config.time_zone` の日本時間とは別のもの

@@ -299,7 +299,7 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
     - 理由：行が少ないと、DB はインデックスを使わずに、全件を読むほうを選ぶため
   - 数字は実務の目安で、公式の基準ではない。実際にインデックスを使うかは、PostgreSQL のプランナーが統計情報（`ANALYZE` で集める）をもとに決める。迷ったら `EXPLAIN` で確かめる
 - 行が増えて必要になったら、後からインデックスを足す
-  - 例：event_entries の `member_id`、notifications の `[member_id, created_at]` は、会員の数に比例して増えるが、今は行が少ないので付けない
+  - 例：notifications の `[member_id, created_at]` は、会員の数に比例して増えるが、今は行が少ないので付けない
   - 後から足すときは、メンテナンス時間に足すか、`CREATE INDEX CONCURRENTLY`（Rails では `algorithm: :concurrently`）で足す
     - 理由：ふつうに足すと、インデックスを作っている間、テーブルへの書き込みが止まるため。`CONCURRENTLY` なら書き込みは止まらないが、時間がかかり、マイグレーションのトランザクションも外す必要がある（`disable_ddl_transaction!`）
 - 重複を防ぎたい列には、一意インデックス（`unique: true`）を付ける
@@ -322,6 +322,62 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - 参照（インデックスを作っている間は、テーブルへの書き込みが止まること、`CONCURRENTLY` はもっと時間がかかること）：https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
 - 参照（`uniqueness` のバリデーションだけでは、同時のリクエストを防げないこと）：https://guides.rubyonrails.org/active_record_validations.html#uniqueness
 - 参照（`add_index` の `unique` オプション、`algorithm: :concurrently` と、それがトランザクションの中ではできないこと）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_index
+
+### 外部キー
+- 外部キーの列を作る前に、そもそも、その外部キーの列が必要かを見極める
+  - 例：notifications は、通知の内容を写して持つので、events への外部キーの列を持たない
+- 外部キーの列には、基本的に外部キー制約を必ず付ける
+  - 理由：「外部キー制約」の節を参照（`belongs_to` の確認だけでは、参照先の存在を守りきれないため）
+  - ただし、次の場合は外部キー制約を付けられない、または付けない
+    - ポリモーフィック関連：参照先のテーブルが1つに決まらないので、付けられない
+    - 参照先が消えても、ID をそのまま残したいとき：制約があると参照先を削除できず、`on_delete: :nullify` では ID が NULL になるので、付けない（公式の記述ではなく推論）
+- 外部キー制約を付けるときは、`t.references` を使う
+  - 理由：`references` なら、列・インデックス・外部キー制約を1行で書ける。列のメソッド（`t.bigint` など）には `foreign_key:` オプションがないので、`references` を使わないと、外部キー制約を別の行で足す必要がある
+    ```ruby
+    # references を使う場合
+    t.references :member, null: false, foreign_key: true
+
+    # references を使わない場合（外部キー制約は別の行）
+    t.bigint :member_id, null: false, index: true
+    t.foreign_key :members
+    ```
+- 外部キー制約を付けないときは、`references` を使わず、列のメソッドで書く。インデックスも、付けるかを判断して `index:` で明示する
+    ```ruby
+    t.bigint :member_id, null: false, index: true
+    ```
+  - 理由：外部キー制約を付けていないことと、インデックスを付けるかどうかを、コードで見てわかるようにするため（このプロジェクトの判断）。インデックスは、書き込みのたびに更新され、容量も使うので、パフォーマンスに関わる（「パフォーマンス（インデックス）」を参照）
+- ポリモーフィック関連（`polymorphic: true`）は、安易に使わない
+  - 理由：参照先のテーブルが1つに決まらないので、外部キー制約を付けられず、参照先の存在を DB で守れないため（Rails も `polymorphic` と `foreign_key` を同時に指定するとエラーにする。ドキュメントではなくソースコードで確かめた）
+- 参照（`references` は列・インデックス・外部キー制約をまとめて作る短い書き方であること）：https://guides.rubyonrails.org/active_record_migrations.html#creating-associations
+- 参照（列のメソッドのオプション。`index:` はあるが、`foreign_key:` はないこと）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/TableDefinition.html#method-i-column
+- 参照（ポリモーフィック関連）：https://guides.rubyonrails.org/association_basics.html#polymorphic-associations
+- 参照（インデックスはデータベース全体に負荷を加えるので、考えて使うこと）：https://www.postgresql.org/docs/17/indexes.html
+
+### 外部キー制約
+- 外部キー制約は、参照する側に「参照される側に存在しない ID」を持つ行を作らせない制約
+  - 参照する側：ID を持つテーブル。`belongs_to` を書くほう（例：notifications の `member_id`）
+  - 参照される側：ID を持たれるテーブル。`has_many` を書くほう（例：members の `id`）
+- 参照する側：存在しない ID を持つ行は、DB がエラーにして保存させない。参照する側の行の削除は、そのままできる
+- 参照される側：参照されている行は、既定（NO ACTION）では削除できない。消すなら、次のどれかにする
+  - 先に、参照する側の行をアプリで消す
+  - Rails で消す（`has_many` の `dependent:`）。`dependent:` は、参照される側の行を `destroy` で消したときだけ動く（`delete` や SQL で消したときは動かない）
+    - `:destroy`：Rails が参照する側の行を1件ずつ `destroy` する。参照する側のコールバックが動くが、件数が多いと重い
+    - `:delete_all`：Rails が参照する側の行を DELETE 1文でまとめて消す。参照する側のコールバックは動かない
+  - DB で消す（`foreign_key: { on_delete: :cascade }`）。参照される側の行を `destroy`・`delete`・SQL のどれで消しても、DB が参照する側の行を一緒に消す。ただし、参照する側の Rails のコールバックは動かない（推論）
+  - NULL にする方法（`:nullify`）は、`null: false` の列では使えない
+- 関連の列には、外部キー制約を付ける
+  - 理由：`belongs_to` の確認はアプリの中だけなので、`delete` や `insert_all` などバリデーションを通らない操作や、同時のリクエストを防げないため
+- 外部キー制約を付けるときは、参照する側の列に必ずインデックスを付ける（`t.references` に `foreign_key: true`。`index: false` にしない）
+  - 理由1：参照される側の行を削除するとき（またはその ID を書き換えるとき）、DB は参照する側のテーブルから、その ID と一致する行を探す必要があるため（インデックスがなければ、参照する側を全件読むことになる：推論）
+  - 理由2：関連をたどる検索（例：`member.notifications` の `WHERE member_id = ?`）も、この列で絞り込む
+  - PostgreSQL は、参照する側のインデックスを自動では作らない。公式は「付けるとよいことが多いが、いつも必要なわけではない」としている。「必ず付ける」は、このプロジェクトの判断
+- 参照（外部キー制約の定義、NO ACTION が既定なこと、`CASCADE`、参照する側にインデックスが自動で作られないこと）：https://www.postgresql.org/docs/17/ddl-constraints.html#DDL-CONSTRAINTS-FK
+  - 参照する側・参照される側（テーブルと列）の定義："We say that in this situation the orders table is the referencing table and the products table is the referenced table. Similarly, there are referencing and referenced columns."
+  - 参照する側の列にインデックスを付ける理由と、自動では作られないこと："Since a DELETE of a row from the referenced table or an UPDATE of a referenced column will require a scan of the referencing table for rows matching the old value, it is often a good idea to index the referencing columns too. Because this is not always needed, and there are many choices available on how to index, the declaration of a foreign key constraint does not automatically create an index on the referencing columns."
+- 参照（`dependent:` の各値、`:nullify` は `NOT NULL` の列に使わないこと）：https://guides.rubyonrails.org/association_basics.html#dependent
+- 参照（`on_delete` オプション）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_foreign_key
+- 参照（`references` はインデックスを作り、`foreign_key` で外部キー制約を作ること）：https://guides.rubyonrails.org/active_record_migrations.html#references
+- 参照（外部キー制約は、DB で守るほうが安全とされること）：https://guides.rubyonrails.org/active_record_migrations.html#active-record-and-referential-integrity
 
 ### タイムゾーン
 - アプリのタイムゾーンを日本時間にする（`config/application.rb` に `config.time_zone = "Tokyo"`。設定済み）。`config.active_record.default_timezone`（DBに保存する日時と、DBから取り出す日時を、UTCとローカルのタイムゾーンのどちらで扱うかを決める設定）は、初期値の `:utc` から変えない

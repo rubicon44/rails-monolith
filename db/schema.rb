@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_01_053606) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_06_150439) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -21,6 +21,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_01_053606) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["email_address"], name: "index_administrators_on_email_address", unique: true
+  end
+
+  create_table "event_entries", force: :cascade do |t|
+    t.bigint "event_id", null: false
+    t.bigint "member_id", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id", "member_id"], name: "index_event_entries_on_event_id_and_member_id", unique: true
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying]::text[])", name: "event_entries_status_valid"
   end
 
   create_table "events", force: :cascade do |t|
@@ -54,5 +64,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_01_053606) do
     t.check_constraint "gender::text = ANY (ARRAY['male'::character varying::text, 'female'::character varying::text])", name: "members_gender_valid"
   end
 
+  add_foreign_key "event_entries", "events"
+  add_foreign_key "event_entries", "members"
   add_foreign_key "events", "administrators"
 end

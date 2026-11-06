@@ -336,6 +336,11 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
     t.bigint :member_id, null: false, index: true
     t.foreign_key :members
     ```
+- 外部キー制約を付けて、その列の単独のインデックスを付けないときも、`t.references` を使い、`index: false` を指定する（`t.bigint` と `t.foreign_key` の組み合わせにしない）
+    ```ruby
+    t.references :event, null: false, foreign_key: true, index: false
+    ```
+  - 理由：外部キー制約を付けるときの書き方を `t.references` にそろえるため（このプロジェクトの判断）
 - 外部キー制約を付けないときは、`references` を使わず、列のメソッドで書く。インデックスも、付けるかを判断して `index:` で明示する
     ```ruby
     t.bigint :member_id, null: false, index: true
@@ -344,6 +349,7 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
 - ポリモーフィック関連（`polymorphic: true`）は、安易に使わない
   - 理由：参照先のテーブルが1つに決まらないので、外部キー制約を付けられず、参照先の存在を DB で守れないため（Rails も `polymorphic` と `foreign_key` を同時に指定するとエラーにする。ドキュメントではなくソースコードで確かめた）
 - 参照（`references` は列・インデックス・外部キー制約をまとめて作る短い書き方であること）：https://guides.rubyonrails.org/active_record_migrations.html#creating-associations
+- 参照（`references` の `index:` は初期値が `true` で、`false` を指定できること）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_reference
 - 参照（列のメソッドのオプション。`index:` はあるが、`foreign_key:` はないこと）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/TableDefinition.html#method-i-column
 - 参照（ポリモーフィック関連）：https://guides.rubyonrails.org/association_basics.html#polymorphic-associations
 - 参照（インデックスはデータベース全体に負荷を加えるので、考えて使うこと）：https://www.postgresql.org/docs/17/indexes.html
@@ -362,7 +368,7 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - NULL にする方法（`:nullify`）は、`null: false` の列では使えない
 - 関連の列には、外部キー制約を付ける
   - 理由：`belongs_to` の確認はアプリの中だけなので、`delete` や `insert_all` などバリデーションを通らない操作や、同時のリクエストを防げないため
-- 外部キー制約を付けるときは、参照する側の列に必ずインデックスを付ける（`t.references` に `foreign_key: true`。`index: false` にしない）
+- 外部キー制約を付けるときは、参照する側の列に必ずインデックスを付ける（`t.references` に `foreign_key: true`）。ただし、その列を先頭に持つ複合インデックスがあるときは、単独のインデックスを付けなくてよい（`index: false`）
   - 理由1：参照される側の行を削除するとき（またはその ID を書き換えるとき）、DB は参照する側のテーブルから、その ID と一致する行を探す必要があるため（インデックスがなければ、参照する側を全件読むことになる：推論）
   - 理由2：関連をたどる検索（例：`member.notifications` の `WHERE member_id = ?`）も、この列で絞り込む
   - PostgreSQL は、参照する側のインデックスを自動では作らない。公式は「付けるとよいことが多いが、いつも必要なわけではない」としている。「必ず付ける」は、このプロジェクトの判断

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_11_06_150439) do
+ActiveRecord::Schema[8.0].define(version: 2026_11_07_171340) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -64,7 +64,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_06_150439) do
     t.check_constraint "gender::text = ANY (ARRAY['male'::character varying::text, 'female'::character varying::text])", name: "members_gender_valid"
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.bigint "member_id", null: false
+    t.string "title", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   add_foreign_key "event_entries", "events"
   add_foreign_key "event_entries", "members"
   add_foreign_key "events", "administrators"
+  add_foreign_key "notifications", "members"
 end

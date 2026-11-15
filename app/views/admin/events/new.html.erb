@@ -24,6 +24,11 @@
     </div>
 
     <div>
+      <%= form.label :venue_address %>
+      <%= form.text_field :venue_address, required: true, maxlength: 200 %>
+    </div>
+
+    <div>
       <%= form.label :male_capacity %>
       <%= form.number_field :male_capacity, required: true, min: 1 %>
     </div>

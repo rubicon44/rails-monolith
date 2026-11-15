@@ -24,7 +24,7 @@ module Admin
     # 進行状態と作成者は、書き換えを防ぐため受け取らない（いきなり「開始」にしたり、別の管理者を作成者にしたりできないようにする）
     def event_params
       params.expect(event: [
-        :title, :description, :male_capacity, :female_capacity,
+        :title, :description, :venue_address, :male_capacity, :female_capacity,
         :entry_start_at, :entry_end_at, :held_start_at, :held_end_at
       ])
     end

@@ -26,6 +26,7 @@ ja:
         administrator: 作成者
         title: タイトル
         description: 内容
+        venue_address: 会場の住所
         male_capacity: 男性の定員
         female_capacity: 女性の定員
         entry_start_at: 申込開始日時

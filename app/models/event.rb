@@ -13,6 +13,7 @@ class Event < ApplicationRecord
 
   validates :title, presence: true, length: { maximum: 100 }
   validates :description, presence: true
+  validates :venue_address, presence: true, length: { maximum: 200 }
   validates :male_capacity, :female_capacity, numericality: { only_integer: true, greater_than_or_equal_to: 1 }
   validates :entry_start_at, :entry_end_at, :held_start_at, :held_end_at, presence: true
   validate :periods_must_be_in_order

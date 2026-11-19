@@ -4,6 +4,10 @@ module Admin
       render locals: { events: Event.order(held_start_at: :desc) }
     end
 
+    def show
+      render locals: { event: Event.find(params[:id]) }
+    end
+
     def new
       render locals: { event: Event.new }
     end

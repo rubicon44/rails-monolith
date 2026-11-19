@@ -18,7 +18,7 @@ Rails.application.routes.draw do
     post   "login",  to: "sessions#create"
     delete "logout", to: "sessions#destroy"
 
-    resources :events, only: %i[index new create]
+    resources :events, only: %i[index show new create]
   end
 
   # ユーザー画面（URL に接頭辞は付けず、コントローラーは User:: に置く）

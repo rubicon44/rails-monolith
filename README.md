@@ -368,13 +368,18 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - NULL にする方法（`:nullify`）は、`null: false` の列では使えない
 - 関連の列には、外部キー制約を付ける
   - 理由：`belongs_to` の確認はアプリの中だけなので、`delete` や `insert_all` などバリデーションを通らない操作や、同時のリクエストを防げないため
-- 外部キー制約を付けるときは、参照する側の列に必ずインデックスを付ける（`t.references` に `foreign_key: true`）。ただし、その列を先頭に持つ複合インデックスがあるときは、単独のインデックスを付けなくてよい（`index: false`）
-  - 理由1：参照される側の行を削除するとき（またはその ID を書き換えるとき）、DB は参照する側のテーブルから、その ID と一致する行を探す必要があるため（インデックスがなければ、参照する側を全件読むことになる：推論）
-  - 理由2：関連をたどる検索（例：`member.notifications` の `WHERE member_id = ?`）も、この列で絞り込む
-  - PostgreSQL は、参照する側のインデックスを自動では作らない。公式は「付けるとよいことが多いが、いつも必要なわけではない」としている。「必ず付ける」は、このプロジェクトの判断
+- 外部キー制約を付けるときは、参照する側の列にインデックスを付けるかを判断する。`t.references` は初期値でインデックスを作るので、付けないときは `index: false` を書く
+  - 次のどちらかがあり、行が多くなるテーブルなら付ける
+    - 参照される側の行を削除する（またはその ID を書き換える）：DB は参照する側のテーブルから、その ID と一致する行を探す（インデックスがなければ、参照する側を全件読むことになる：推論）
+      - 参照（https://www.postgresql.org/docs/17/ddl-constraints.html#DDL-CONSTRAINTS-FK）の、参照する側の列にインデックスを付ける理由と、自動では作られないこと："Since a DELETE of a row from the referenced table or an UPDATE of a referenced column will require a scan of the referencing table for rows matching the old value, it is often a good idea to index the referencing columns too. Because this is not always needed, and there are many choices available on how to index, the declaration of a foreign key constraint does not automatically create an index on the referencing columns."
+    - アプリがその列で検索する（例：`member.notifications` の `WHERE member_id = ?`）
+  - 複数の列をまとめたインデックスの、いちばん左の列には、単独のインデックスを付けなくてよい（例：`[event_id, member_id]` のインデックスがあれば、`event_id` だけで探すときもこれが使えるので、`event_id` だけのインデックスは不要）
+    - 参照（複合インデックスは、先頭の列に条件があるときに最も効率がよいこと）：https://www.postgresql.org/docs/17/indexes-multicolumn.html
+      - "A multicolumn B-tree index can be used with query conditions that involve any subset（部分集合） of the index's columns, but the index is most efficient when there are constraints on the leading (leftmost) columns."
+  - 付けないことで避けられるもの：インデックスは、書き込みのたびに更新され、容量も使う（「パフォーマンス（インデックス）」を参照）
+  - PostgreSQL は、参照する側のインデックスを自動では作らない。公式は「付けるとよいことが多いが、いつも必要なわけではない」としている
 - 参照（外部キー制約の定義、NO ACTION が既定なこと、`CASCADE`、参照する側にインデックスが自動で作られないこと）：https://www.postgresql.org/docs/17/ddl-constraints.html#DDL-CONSTRAINTS-FK
   - 参照する側・参照される側（テーブルと列）の定義："We say that in this situation the orders table is the referencing table and the products table is the referenced table. Similarly, there are referencing and referenced columns."
-  - 参照する側の列にインデックスを付ける理由と、自動では作られないこと："Since a DELETE of a row from the referenced table or an UPDATE of a referenced column will require a scan of the referencing table for rows matching the old value, it is often a good idea to index the referencing columns too. Because this is not always needed, and there are many choices available on how to index, the declaration of a foreign key constraint does not automatically create an index on the referencing columns."
 - 参照（`dependent:` の各値、`:nullify` は `NOT NULL` の列に使わないこと）：https://guides.rubyonrails.org/association_basics.html#dependent
 - 参照（`on_delete` オプション）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_foreign_key
 - 参照（`references` はインデックスを作り、`foreign_key` で外部キー制約を作ること）：https://guides.rubyonrails.org/active_record_migrations.html#references

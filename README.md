@@ -359,13 +359,7 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - 参照する側：ID を持つテーブル。`belongs_to` を書くほう（例：notifications の `member_id`）
   - 参照される側：ID を持たれるテーブル。`has_many` を書くほう（例：members の `id`）
 - 参照する側：存在しない ID を持つ行は、DB がエラーにして保存させない。参照する側の行の削除は、そのままできる
-- 参照される側：参照されている行は、既定（NO ACTION）では削除できない。消すなら、次のどれかにする
-  - 先に、参照する側の行をアプリで消す
-  - Rails で消す（`has_many` の `dependent:`）。`dependent:` は、参照される側の行を `destroy` で消したときだけ動く（`delete` や SQL で消したときは動かない）
-    - `:destroy`：Rails が参照する側の行を1件ずつ `destroy` する。参照する側のコールバックが動くが、件数が多いと重い
-    - `:delete_all`：Rails が参照する側の行を DELETE 1文でまとめて消す。参照する側のコールバックは動かない
-  - DB で消す（`foreign_key: { on_delete: :cascade }`）。参照される側の行を `destroy`・`delete`・SQL のどれで消しても、DB が参照する側の行を一緒に消す。ただし、参照する側の Rails のコールバックは動かない（推論）
-  - NULL にする方法（`:nullify`）は、`null: false` の列では使えない
+- 参照される側：参照されている行は、既定（NO ACTION）では削除できない（消し方と、削除させないときの使い分けは「データ削除時の、参照する側の行の扱い」を参照）
 - 関連の列には、外部キー制約を付ける
   - 理由：`belongs_to` の確認はアプリの中だけなので、`delete` や `insert_all` などバリデーションを通らない操作や、同時のリクエストを防げないため
 - 外部キー制約を付けるときは、参照する側の列にインデックスを付けるかを判断する。`t.references` は初期値でインデックスを作るので、付けないときは `index: false` を書く
@@ -380,10 +374,55 @@ Controllerでインスタンス変数を使ってよいのは、インスタン�
   - PostgreSQL は、参照する側のインデックスを自動では作らない。公式は「付けるとよいことが多いが、いつも必要なわけではない」としている
 - 参照（外部キー制約の定義、NO ACTION が既定なこと、`CASCADE`、参照する側にインデックスが自動で作られないこと）：https://www.postgresql.org/docs/17/ddl-constraints.html#DDL-CONSTRAINTS-FK
   - 参照する側・参照される側（テーブルと列）の定義："We say that in this situation the orders table is the referencing table and the products table is the referenced table. Similarly, there are referencing and referenced columns."
-- 参照（`dependent:` の各値、`:nullify` は `NOT NULL` の列に使わないこと）：https://guides.rubyonrails.org/association_basics.html#dependent
-- 参照（`on_delete` オプション）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_foreign_key
 - 参照（`references` はインデックスを作り、`foreign_key` で外部キー制約を作ること）：https://guides.rubyonrails.org/active_record_migrations.html#references
 - 参照（外部キー制約は、DB で守るほうが安全とされること）：https://guides.rubyonrails.org/active_record_migrations.html#active-record-and-referential-integrity
+
+### データ削除時の、参照する側の行の扱い
+- 外部キー制約（既定の NO ACTION）があると、参照されている行は削除できない（「外部キー制約」を参照）。参照される側の行を削除するときは、参照する側の行をどうするかを決める
+- 一緒に消すなら、次のどれかにする
+  - 先に、参照する側の行をアプリで消す
+  - Rails で消す（`has_many` の `dependent:`）。`dependent:` は、参照される側の行を `destroy` で消したときだけ動く（`delete` や SQL で消したときは動かない）
+    - `:destroy`：Rails が参照する側の行を1件ずつ `destroy` する。参照する側のコールバックが動くが、件数が多いと重い
+    - `:delete_all`：Rails が参照する側の行を DELETE 1文でまとめて消す。参照する側のコールバックは動かない
+  - DB で消す（`foreign_key: { on_delete: :cascade }`）。参照される側の行を `destroy`・`delete`・SQL のどれで消しても、DB が参照する側の行を一緒に消す。ただし、参照する側の Rails のコールバックは動かない（推論）
+  - NULL にする方法（`:nullify`）は、`null: false` の列では使えない
+- 参照されている間は、参照される側の行を削除させないときは、`dependent:` を次のように使い分ける（例：申込のあるイベントは削除させない）
+  - `:restrict_with_error`：特別な理由がなければ、これを使う
+    - 削除を止めるもの：Rails（DELETE を送る前に、参照する側の行があるかを確認する）
+    - 止めたときの結果：`destroy` が `false` を返し、`errors` にエラー文が入る
+    - 使う場面：削除できないことが、ユーザーの操作として普通に起こるとき。画面でエラー文を伝える（例：管理者が削除ボタンを押したが、申込がある）
+  - `:restrict_with_exception`
+    - 削除を止めるもの：Rails（DELETE を送る前に、参照する側の行があるかを確認する）
+    - 止めたときの結果：例外 `ActiveRecord::DeleteRestrictionError`
+    - 使う場面：削除できないことが、起きるはずがないとき。起きたら、開発者がエラーの通知やログで気づけるようにする（例：申込のあるイベントには削除ボタンを出していない、バッチから削除する）
+  - 指定なし
+    - 削除を止めるもの：DB の外部キー制約（Rails は確認せずに DELETE を送る）
+    - 止めたときの結果：例外 `ActiveRecord::InvalidForeignKey`
+    - 使う場面：Rails では何も宣言せず、DB の制約だけで防ぐとき
+
+  ```ruby
+  # app/models/event.rb
+  has_many :event_entries, dependent: :restrict_with_error
+
+  # 呼ぶ側は、save と同じ形で書ける
+  if event.destroy
+    # 削除できた（申込が0件）
+  else
+    event.errors.full_messages # => ["申込があるため削除できません"]
+  end
+  ```
+  - 3つとも、参照されている行は削除されない。違うのは、誰が止めるかと、止めたことの伝え方
+  - 使い分けの基準は、公式には書かれていない（このプロジェクトの判断）
+  - `dependent:` は `destroy` のときだけ動く。`delete` や SQL で削除したときは、どの指定でも、DB の外部キー制約が止める
+  - 参照（`restrict_with_error` と `restrict_with_exception`）：https://guides.rubyonrails.org/association_basics.html#dependent
+    - ":restrict_with_exception causes an ActiveRecord::DeleteRestrictionError exception to be raised if there is an associated record"
+    - ":restrict_with_error causes an error to be added to the owner if there is an associated object"
+  - 参照（指定なしのときは、Rails は何もしないこと）：https://api.rubyonrails.org/v8.0/classes/ActiveRecord/Associations/ClassMethods.html#method-i-has_many
+    - ":dependent Controls what happens to the associated objects when their owner is destroyed. ... nil do nothing (default)."
+  - 参照（DB が削除を拒否したときの例外）：https://api.rubyonrails.org/v8.0/classes/ActiveRecord/InvalidForeignKey.html
+    - "Raised when a record cannot be inserted or updated because it references a non-existent record, or when a record cannot be deleted because a parent record references it."
+- 参照（`dependent:` の各値、`:nullify` は `NOT NULL` の列に使わないこと）：https://guides.rubyonrails.org/association_basics.html#dependent
+- 参照（`on_delete` オプション）：https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html#method-i-add_foreign_key
 
 ### タイムゾーン
 - アプリのタイムゾーンを日本時間にする（`config/application.rb` に `config.time_zone = "Tokyo"`。設定済み）。`config.active_record.default_timezone`（DBに保存する日時と、DBから取り出す日時を、UTCとローカルのタイムゾーンのどちらで扱うかを決める設定）は、初期値の `:utc` から変えない

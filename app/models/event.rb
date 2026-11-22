@@ -1,6 +1,7 @@
 # イベント（イベント集約のルート）
 class Event < ApplicationRecord
   belongs_to :administrator
+  has_many :event_entries, dependent: :restrict_with_error
 
   enum :status, {
     scheduled: "scheduled",                 # 開催前

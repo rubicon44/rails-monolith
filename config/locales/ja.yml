@@ -24,6 +24,7 @@ ja:
         password: パスワード
       event:
         administrator: 作成者
+        event_entries: 申込
         title: タイトル
         description: 内容
         venue_address: 会場の住所
@@ -88,3 +89,7 @@ ja:
       not_a_number: は数値で入力してください
       not_an_integer: は整数で入力してください
       greater_than_or_equal_to: は%{count}以上の値にしてください
+      # has_many の dependent: :restrict_with_error で、削除を止めたときのメッセージ（%{record} は関連の名前。例：申込）
+      restrict_dependent_destroy:
+        has_one: "%{record}があるため削除できません"
+        has_many: "%{record}があるため削除できません"

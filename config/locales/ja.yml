@@ -16,6 +16,7 @@ ja:
     models:
       administrator: 管理者
       event: イベント
+      event_entry: 申込
       member: 会員
     attributes:
       administrator:
@@ -36,6 +37,12 @@ ja:
         held_end_at: 開催終了日時
         status: 進行状態
         entry_status: 受付状態
+      event_entry:
+        event: イベント
+        member: 会員
+        member_id: 会員
+        status: 申込状態
+        created_at: 申込日時
       member:
         name: 会員名
         email_address: メールアドレス
@@ -53,11 +60,19 @@ ja:
         not_yet_open: 受付前
         accepting: 受付中
         closed: 受付終了
+      event_entry/status:
+        pending: 承認待ち
+        approved: 承認済み
       member/gender:
         male: 男性
         female: 女性
     errors:
       models:
+        event_entry:
+          attributes:
+            member_id:
+              # 同じイベントへの2回目の申込（uniqueness）。「会員はすでに存在します」では意味が伝わらないため
+              taken: はこのイベントにすでに申し込んでいます
         member:
           attributes:
             gender:

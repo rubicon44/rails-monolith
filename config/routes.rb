@@ -29,6 +29,10 @@ Rails.application.routes.draw do
     delete "logout", to: "sessions#destroy"
 
     resources :members, only: %i[new create]
-    resources :events, only: %i[index]
+    resources :events, only: %i[index] do
+      # 会員の申込は、1つのイベントに1回だけなので、単数形リソースにする（URL に申込の ID を持たない）
+      # URL は /events/:event_id/entry と短くし、コントローラー名はモデル（EventEntry）にそろえる（同じ名前で検索できるようにするため）
+      resource :entry, only: %i[create], controller: "event_entries"
+    end
   end
 end

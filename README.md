@@ -50,6 +50,9 @@
 | 作成者 | イベントを作成した管理者 | `administrator`（`administrator_id`） | — |
 | 受付状態 | 申込期間と現在の日時から決まる、申込を受け付けているかどうか | `entry_status`（`not_yet_open`：受付前、`accepting`：受付中、`closed`：受付終了） | — |
 | 受付中のイベント | 受付状態が受付中のイベント（申込開始日時 ≦ 現在 ＜ 申込終了日時）。会員に見せるのは、受付中のイベントだけ | `Event.accepting_entries` | — |
+| 申込 | 会員がイベントへの参加を申し込んだ記録。1人の会員は、1つのイベントに1回だけ申し込める | `EventEntry` / `event_entries` | — |
+| 申込状態 | 申込が承認されたかどうか | `status`（`pending`：承認待ち、`approved`：承認済み） | — |
+| 申込日時 | 会員が申し込んだ日時 | `created_at` | — |
 
 - ドメインの言葉（用語集に載っているモデル名・属性名・enum の値）は、`config/locales/ja.yml` で管理し、画面では必ず ja.yml から取り出して表示する（View に直接書かない）
   - モデル名：`Event.model_name.human` → イベント
@@ -172,6 +175,41 @@ https://github.com/user-attachments/assets/ed618838-3649-42b1-8d44-d1f0bf58fd41
   - 例：`params.fetch(:q, {}).permit(:keyword, :status)`
   - 理由：`expect` はキーがないと400エラーになるため。キーがないときは `fetch` で空のハッシュを初期値にする
   - 参照：https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters
+
+### 書き方の選び方
+- 動作が同じ書き方が複数あるときは、Rails の仕組みを知らなくても読める書き方を選ぶ
+  - 例：関連の外部キーには、関連先のオブジェクトではなく、ID を明示して渡す
+    ```ruby
+    # 使う
+    EventEntry.new(event_id: event.id, member_id: current_member.id)
+
+    # 使わない
+    EventEntry.new(event: event, member: current_member)
+    ```
+  - 理由：`member:` で渡すと、`belongs_to :member` が用意した `member=` が、会員の `id` を取り出して `member_id` に入れる。この仕組みを知らないと、`member_id` がどこで入るのかをコードから読み取れないため。`member_id:` と書けば、どの列に何が入るかが、そのまま読める
+  - 違いが出る点：`member:` で渡すと、手元の `entry.member` が `current_member` と同じオブジェクトになる。`member_id:` で渡すと、`entry.member` を呼んだときに、Rails が会員を DB から読み直す。DB に保存される値は同じ
+  - 例外：暗黙の書き方に、動作の違いによる利点があるときは、その書き方を使い、理由をコメントに書く
+  - 参照（`member=` が、関連先の主キーを取り出して外部キーに入れること）：https://guides.rubyonrails.org/association_basics.html#methods-added-by-belongs-to-assigning-the-association
+    - "The association= method assigns an associated object to this object. Behind the scenes, this means extracting the primary key from the associated object and setting this object's foreign key to the same value."
+
+### レコードの作り方
+- レコードは `Model.new` で作り、外部キーも含めて、値をすべて明示して渡す（関連の `build`、関連の `new`、`create` は使わない）
+  - 例：`EventEntry.new(event_id: event.id, member_id: current_member.id)`
+  - 理由：作り方を1つにそろえ、どの列に何が入るかをコードから読み取れるようにするため（「書き方の選び方」を参照）
+  - 関連の `build`（`event.event_entries.build(member_id: current_member.id)`）と比較した結果、`Model.new` を選んだ。`build` には「外部キーを自動で入れるので渡し忘れがない」「イベントの申込として作ることが読み取れる」利点があるが、外部キーが入る仕組みを知らないと読めない。渡し忘れは、下のとおりバリデーションと DB で防げる
+- 保存は `save` で行い、戻り値で成功と失敗を分ける
+  - `create` を使わない理由：`create` は保存に失敗しても作ったオブジェクトを返すので、成功したかを `if` の形で読み取れないため
+- 外部キーを渡し忘れても、`belongs_to` のバリデーションと DB の `NOT NULL` で保存に失敗するので、気づかないまま保存されることはない
+  - 参照（`belongs_to` は、初期値で関連先のレコードが存在するかを確認する）：https://guides.rubyonrails.org/association_basics.html#belongs-to
+    - "By default belongs_to validates the presence of the associated record to guarantee reference consistency."
+  - `belongs_to` のバリデーションも、ほかのバリデーションと同じく、`save`（と `valid?`）のときに実行される。`new` で値を入れた時点では確認されない
+    - 参照（バリデーションは、保存の前に実行される）：https://guides.rubyonrails.org/active_record_validations.html
+      - "Before saving an Active Record object, Rails runs your validations, and if these validations produce any validation errors, then Rails will not save the object."
+    - 「`belongs_to` のバリデーションが保存時に動く」と1文で書いた公式の記述はなく、上の2つの記述を組み合わせた結論（動作でも確認した）
+- 参照（`new` は保存しない、`create` は保存する）：https://guides.rubyonrails.org/active_record_basics.html#create
+  - "The new method will return a new, non-persisted object, while create will save the object to the database and return it."
+- 参照（`create` は、保存に失敗しても、作ったオブジェクトを返す）：https://api.rubyonrails.org/v8.0/classes/ActiveRecord/Persistence/ClassMethods.html#method-i-create
+  - "The resulting object is returned whether the object was saved successfully to the database or not."
 
 ### インスタンス変数
 Controllerでインスタンス変数を使ってよいのは、インスタンス変数を使ったメモ化（memoization）の場合だけ。Viewへの受け渡し、`before_action` からの値の受け渡し、アクションの中での一時的な値には使わない。

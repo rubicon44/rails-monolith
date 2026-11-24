@@ -45,6 +45,7 @@
 | 定員 | イベントに参加できる人数の上限。男性と女性で別々に決める | `male_capacity` / `female_capacity` | — |
 | 申込期間 | 会員がイベントに申し込める期間 | `entry_start_at` 〜 `entry_end_at` | — |
 | 開催期間 | イベントを開催する期間 | `held_start_at` 〜 `held_end_at` | — |
+| 会場の住所 | イベントの開催場所。都道府県名から書く | `venue_address` | — |
 | 進行状態 | イベントがどの段階にあるか（開催前、準備完了、開始…） | `status` | — |
 | 作成者 | イベントを作成した管理者 | `administrator`（`administrator_id`） | — |
 | 受付状態 | 申込期間と現在の日時から決まる、申込を受け付けているかどうか | `entry_status`（`not_yet_open`：受付前、`accepting`：受付中、`closed`：受付終了） | — |

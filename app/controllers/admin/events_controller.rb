@@ -14,7 +14,7 @@ module Admin
 
     def create
       # 作成者は、書き換えを防ぐためフォームから受け取らない
-      event = Event.new(event_params.merge(administrator: current_administrator))
+      event = Event.new(event_params.merge(administrator_id: current_administrator.id))
 
       if event.save
         redirect_to admin_events_path, notice: "イベントを作成しました"

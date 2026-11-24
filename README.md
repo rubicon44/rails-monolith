@@ -178,13 +178,17 @@ https://github.com/user-attachments/assets/ed618838-3649-42b1-8d44-d1f0bf58fd41
 
 ### 書き方の選び方
 - 動作が同じ書き方が複数あるときは、Rails の仕組みを知らなくても読める書き方を選ぶ
-  - 例：関連の外部キーには、関連先のオブジェクトではなく、ID を明示して渡す
+  - 例：関連の外部キーには、関連先のオブジェクトではなく、ID を明示して渡す。`new`、`merge`、`where`、`update` など、値を渡すすべての場所で同じにする
     ```ruby
     # 使う
     EventEntry.new(event_id: event.id, member_id: current_member.id)
+    event_params.merge(administrator_id: current_administrator.id)
+    EventEntry.where(member_id: current_member.id)
 
     # 使わない
     EventEntry.new(event: event, member: current_member)
+    event_params.merge(administrator: current_administrator)
+    EventEntry.where(member: current_member)
     ```
   - 理由：`member:` で渡すと、`belongs_to :member` が用意した `member=` が、会員の `id` を取り出して `member_id` に入れる。この仕組みを知らないと、`member_id` がどこで入るのかをコードから読み取れないため。`member_id:` と書けば、どの列に何が入るかが、そのまま読める
   - 違いが出る点：`member:` で渡すと、手元の `entry.member` が `current_member` と同じオブジェクトになる。`member_id:` で渡すと、`entry.member` を呼んだときに、Rails が会員を DB から読み直す。DB に保存される値は同じ

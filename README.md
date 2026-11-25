@@ -215,6 +215,37 @@ https://github.com/user-attachments/assets/ed618838-3649-42b1-8d44-d1f0bf58fd41
 - 参照（`create` は、保存に失敗しても、作ったオブジェクトを返す）：https://api.rubyonrails.org/v8.0/classes/ActiveRecord/Persistence/ClassMethods.html#method-i-create
   - "The resulting object is returned whether the object was saved successfully to the database or not."
 
+### ルーティングの名前
+- コントローラー名は、モデル名にそろえる。リソース名がモデル名と違うときは、`controller:` でコントローラーを指定する
+- リソース名は、URL とパスヘルパーが短く読みやすくなる名前にする。モデル名とそろっていなくてもよい
+    ```ruby
+    resources :events, only: %i[index] do
+      # URL：/events/:event_id/entry、ヘルパー：event_entry_path、コントローラー：EventEntriesController
+      resource :entry, only: %i[create], controller: "event_entries"
+    end
+    # URL：/event_entries、ヘルパー：event_entries_path、コントローラー：EventEntriesController
+    resources :event_entries, only: %i[index]
+    ```
+  - 理由：コントローラー名をモデル名にそろえると、モデルとコントローラーを同じ名前で検索できるため。リソース名までモデル名にそろえると、ネストしたときにヘルパー名が長くなる（例：`resource :event_entry` を `events` の下に置くと、外側の `event_` が付いて `event_event_entry_path` になる）
+  - `controller:` を付けたルートには、なぜコントローラー名を指定しているかをコメントに書く（リソース名からは、コントローラー名がわからないため）
+- 参照（`controller:` で、リソースに使うコントローラーを指定できる）：https://guides.rubyonrails.org/routing.html#specifying-a-controller-to-use
+  - "The :controller option lets you explicitly specify a controller to use for the resource."
+- 参照（ルートを書くと、`_path` のヘルパーが Controller と View で使える。ヘルパー名は、`bin/rails routes` の Prefix 列に `_path` を付けたもの）：https://guides.rubyonrails.org/routing.html#path-and-url-helpers
+  - "Creating a resourceful route will also expose a number of helpers to controllers and views in your application. For example, adding resources :photos to the route file will generate these _path helpers"
+  - "Parameters to the path helpers, such as :id above, are passed to the generated URL, such that edit_photo_path(10) will return /photos/10/edit."
+  - "The prefix used before "_path" and "_url" is the route name and can be identified by looking at the "prefix" column of the bin/rails routes command output."
+  - このプロジェクトの例（`bin/rails routes -c user/event_entries` の出力）。Prefix の `event_entry` から `event_entry_path`、`event_entries` から `event_entries_path` が作られる
+    ```
+           Prefix Verb URI Pattern                       Controller#Action
+      event_entry POST /events/:event_id/entry(.:format) user/event_entries#create
+    event_entries GET  /event_entries(.:format)          user/event_entries#index
+    ```
+    - `event_entry_path(event)`：会員のイベント一覧の「申し込む」ボタン（`app/views/user/events/index.html.erb`）
+    - `event_entries_path`：申込後の移動先（`User::EventEntriesController#create`）と、会員のトップの「申込一覧」リンク（`app/views/user/dashboards/show.html.erb`）
+- 参照（ネストしたルートのヘルパー名の例と、外側のオブジェクトを最初の引数に渡すこと）：https://guides.rubyonrails.org/routing.html#nested-resources
+  - "This will also create the usual path and url routing helpers such as magazine_ads_url and edit_magazine_ad_path. Since the ads resource is nested below magazines, The ad URLs require a magazine. The helpers can take an instance of Magazine as the first parameter (edit_magazine_ad_path(@magazine, @ad))."
+  - 「外側のリソース名がヘルパー名に付く」と書いた文はなく、`ads` を `magazines` の下に置いた例の名前（`magazine_ads_url`）から読み取ったもの。このプロジェクトでは、`events` の下の `entry` が `event_entry_path(event)` になる
+
 ### インスタンス変数
 Controllerでインスタンス変数を使ってよいのは、インスタンス変数を使ったメモ化（memoization）の場合だけ。Viewへの受け渡し、`before_action` からの値の受け渡し、アクションの中での一時的な値には使わない。
 

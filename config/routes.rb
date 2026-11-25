@@ -34,5 +34,7 @@ Rails.application.routes.draw do
       # URL は /events/:event_id/entry と短くし、コントローラー名はモデル（EventEntry）にそろえる（同じ名前で検索できるようにするため）
       resource :entry, only: %i[create], controller: "event_entries"
     end
+    # 自分の申込の一覧（GET /event_entries）。リソース名・URL・コントローラー・ヘルパー名を、モデル（EventEntry）にそろえる
+    resources :event_entries, only: %i[index]
   end
 end

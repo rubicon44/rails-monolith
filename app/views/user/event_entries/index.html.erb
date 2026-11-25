@@ -1,0 +1,36 @@
+<%# locals: (entries:) -%>
+<%= render layout: "user/shared/frame" do %>
+  <h1>申込一覧</h1>
+
+  <% if flash[:notice] %>
+    <p role="status"><%= flash[:notice] %></p>
+  <% end %>
+
+  <% if entries.empty? %>
+    <p>申込はありません</p>
+  <% else %>
+    <table>
+      <thead>
+        <tr>
+          <th><%= Event.human_attribute_name(:title) %></th>
+          <th>開催期間</th>
+          <th><%= EventEntry.human_attribute_name(:status) %></th>
+          <th><%= EventEntry.human_attribute_name(:created_at) %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% entries.each do |entry| %>
+          <tr>
+            <td><%= entry.event.title %></td>
+            <td><%= l entry.event.held_start_at %> 〜 <%= l entry.event.held_end_at %></td>
+            <td><%= EventEntry.human_attribute_name("status.#{entry.status}") %></td>
+            <td><%= l entry.created_at %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <p><%= link_to "イベント一覧", events_path %></p>
+  <p><%= link_to "トップに戻る", root_path %></p>
+<% end %>
